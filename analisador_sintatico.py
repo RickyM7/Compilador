@@ -24,10 +24,16 @@ class AnalisadorSintatico:
             if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "=":
                 self.pos += 1
 
-                if self.pos < len(self.tokens) and (self.tokens[self.pos][0] == "NUMERO" or self.tokens[self.pos][0] == "IDENTIFICADOR"):
+                if self.pos < len(self.tokens) and (self.tokens[self.pos][0] == "INTEIRO" or self.tokens[self.pos][0] == "IDENTIFICADOR"):
                     valor = self.tokens[self.pos][1]
                     self.tabela_simbolos.adicionar(identificador, tipo, valor)
                     self.pos += 1
+
+                elif self.pos < len(self.tokens) and (self.tokens[self.pos][0] == "BOOLEANO" or self.tokens[self.pos][0] == "IDENTIFICADOR"):
+                    valor = self.tokens[self.pos][1]
+                    self.tabela_simbolos.adicionar(identificador, tipo, valor)
+                    self.pos += 1
+
                 else:
                     print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Esperado valor após '='.")
             else:

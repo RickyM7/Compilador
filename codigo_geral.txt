@@ -1,8 +1,5 @@
-int a;
-boo b;
-
-a = 1;
-b = VERDADEIRO;
+int a = 1;
+boo b = VERDADEIRO;
 
 proc Exemplo1(int a, boo b) {
     escreva(a);
@@ -16,7 +13,7 @@ int func Exemplo2(int a) {
 
 Exemplo1(3, VERDADEIRO);
 
-int c;
+int c = 0;
 c = Exemplo2(4);
 
 enquanto (c > 2) {

@@ -1,12 +1,3 @@
-DELIMITADORES = {' ', '\t', '\n', ',', ';', '(', ')', '{', '}', '[', ']', '.', ':'}
-OPERADORES_ARITMETICOS = {'+', '-', '*', '/', 'div'}
-OPERADOR_ATRIBUICAO = '='
-OPERADORES_RELACIONAIS = {'!=', '>', '<', '>=', '<='}
-OPERADORES_LOGICOS = {'ou', 'e'}
-PALAVRAS_RESERVADAS = {'int', 'boo', 'proc', 'func', 'se', 'senao', 'enquanto', 
-                       'leia', 'escreva', 'retorne', 'continue', 'pare'}
-VALORES_BOO = {'VERDADEIRO', 'FALSO'}
-
 class AnalisadorLexico:
     def __init__(self, arquivo):
         self.linhas = self.ler_arquivo(arquivo)
@@ -40,13 +31,36 @@ class AnalisadorLexico:
             return None
 
         # Regras para classificar o token
-        if token in ["int", "boo"]:  # Palavras reservadas
+        palavras_reservadas = ['int', 'boo', 'proc', 'func', 'se', 'senao', 
+                               'enquanto', 'leia', 'escreva', 'retorne', 
+                               'continue', 'pare']
+        if token in palavras_reservadas:  # Palavras reservadas
             self.tokens.append(('RESERVADA', token, linha))
+
+        elif token in ['VERDADEIRO', 'FALSO']:  # Valores booleanos
+            self.tokens.append(('BOOLEANO', token, linha))
+
         elif token.isidentifier():  # Identificadores
             self.tokens.append(('IDENTIFICADOR', token, linha))
-        elif token.isdigit():  # Números
-            self.tokens.append(('NUMERO', token, linha))
-        elif token in ['=', ';']:  # Delimitadores
+       
+        elif token.isdigit():  # Números inteiros
+            self.tokens.append(('INTEIRO', token, linha))
+       
+        elif token in [' ', '\t', '\n', ',', ';', '(', ')', '{', '}', '[', ']',
+                         '.', ':']:  # Delimitadores      
             self.tokens.append(('DELIMITADOR', token, linha))
+       
+        elif token in ['ou', 'e']:  # Operadores Lógicos
+            self.tokens.append(('LOGICOS', token, linha))
+      
+        elif token in ['!=', '>', '<', '>=', '<=']:  # Operadores Relacionais
+            self.tokens.append(('RELACIONAIS', token, linha))
+       
+        elif token in ['+', '-', '*', '/', 'div']:  # Operadores Aritméticos
+            self.tokens.append(('ARITMETICOS', token, linha))
+       
+        elif token in ['=']:  # Atribuição
+            self.tokens.append(('ATRIBUICAO', token, linha))
+    
         else:  # Token não reconhecido
             raise ValueError(f"Erro léxico na linha {linha}: '{token}' não reconhecido.")

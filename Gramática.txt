@@ -1,0 +1,175 @@
+
+Curso: Bacharelado em Ciência da Computação
+Disciplina: Compiladores 
+Docente: Maria Aparecida Amorim Sibaldo de Carvalho
+Discentes: Gison Vilaça Morais
+		 Ricardo Martins da Silva
+Semestre: 2024.2 
+Data: 11/11/2024
+
+
+
+Atividade 1: Gramática
+
+Características da BNF/Gramática:
+ Declaração de variáveis de tipo inteiro e booleano
+ Declaração de procedimentos e funções (sem e com parâmetros)
+ Comandos de atribuição
+ Chamada de procedimentos e funções
+ Comando de desvio condicional (if e else)
+ Comando de laço (while)
+ Comando de retorno de valor
+ Comandos de desvio incondicional (break e continue)
+ Comando de impressão de constante e variável na tela
+Expressões aritméticas (+, -, * e /)
+Expressões booleanas (==, !=, >, >=, < e <=)
+
+Legendas e Observações da BNF/Gramática:
+“< >”: São variáveis (símbolos não-terminais).
+Em negrito: São palavras reservadas ou símbolos terminais.
+“::=”: É usado para representar a geração.
+“[ ]”: É um conteúdo que pode existir ou não, se sim, será uma vez.
+“{ }”: Conteúdo que pode ser gerado inúmeras vezes ou nenhuma.
+                 Obs.: Se for “{ }“ em negrito, é a maneira que estará no código.
+“( )”: Também está relacionado à maneira que estará no código.
+Estrutura: Não é indentada.
+        Obs.: No exemplo de código há indentação para ilustração.
+// EXEMPLO DE CÓDIGO:
+
+
+int a;
+boo b;
+
+a = 1;
+b = VERDADEIRO;
+
+proc Nome1(int a, boo b) {
+	escreva(a);
+}
+
+int func Nome2(int a) {
+	Int valor;
+	valor = a;
+	retorne valor;
+}
+
+Nome1(3, VERDADEIRO);
+
+int c;
+c = Nome2(4);
+
+enquanto(c>2){
+se(c<2){
+pare;
+}
+} senao {
+	c = c-1;
+	continue;
+}
+}
+
+
+GRAMÁTICA
+
+
+
+
+1 - Declaração de Variáveis:
+
+<Declaração de variáveis> ::= <Tipo> <Identificador>;
+
+<Tipo> ::= (int | boo)
+
+
+
+
+2 - Declaração de Procedimento e Função:
+
+<Declaração de Procedimento> ::= proc <Identificador> ({,<Parâmetro>}) {
+							<Bloco do Procedimento>
+							}
+
+<Bloco do Procedimento> ::= [<Declaração de variáveis>] <Comandos>
+
+<Declaração de Função> ::= func <Identificador> (<Parâmetro>) {
+							<Bloco do Função>
+							}
+
+<Bloco da Função> ::= [<Declaração de variáveis>] <Comandos>
+
+<Parâmetro> ::= <Tipo> <Identificador> [,<Parâmetro>]
+
+
+
+
+
+
+3 - Comandos:
+
+<Comandos> ::= (<Comando Chamar>|
+<Comando Condicional> |
+<Comando Enquanto> |
+<Comando Leia> |
+<Comando Escreva> |
+<Comandos>)
+
+<Comando Chamar> ::= (<Comando Atribua>|
+<Chamada de Procedimento> | 
+<Chamada de Função>)
+
+<Comando Atribua> ::= <Identificador> = <Expressão>
+
+<Chamada de Procedimento> ::= <Identificador> ([<Argumentos>])
+
+<Comando Condicional> ::= se (<Expressão>) {
+<Comando>
+} [senao { 
+<Comando>
+}]
+
+<Comando Enquanto> ::= enquanto (<Expressão>){
+<Comando>
+						}
+
+<Comando Leitura> ::= leia(<Identificador>)
+
+<Comando Escrita> ::= escreva(<Identificador>)
+
+
+
+
+
+4 - Expressões:
+
+<Expressão>::= <Expressão Simples> [<Operador Relacional>
+<Expressão simples>]
+
+<Operador Relacional>::= (<> | = | < | <= | > | >=)
+
+<Expressão Simples> ::= [ + | - ] <Termo> {( + | - | ou) <Termo> }
+
+<Termo>::= <Fator> {(* | div | e) <Fator>}
+
+<Fator> ::= (<Variável> | <Número> | <Chamada de Função> |
+(<Expressão>) | VERDADEIRO| FALSO
+nao <Fator>)
+
+<Variável> ::= <Identificador>
+
+<Chamada de Função> ::= <Identificador> (<Argumentos>)
+
+<Argumentos> ::=  (<Expressão> {,<Expressão>})
+
+
+
+
+5 - Números e Identificadores:
+
+<Identificador> ::= <letra> {<letra> | <dígito> | _ }
+
+<Número> ::= <dígito> {<dígito>}
+
+<Dígito> ::= (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)
+
+<Letra> ::= (a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|
+A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z)

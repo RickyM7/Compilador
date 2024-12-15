@@ -1,6 +1,5 @@
 int a=0;
 boo b=VERDADEIRO;
-int c=1;
-se ( c == 0 ) {
+se ( a == 0 ) {
 a=1;
 }

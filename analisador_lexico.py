@@ -9,7 +9,7 @@ class AnalisadorLexico:  # Classe para realizar a análise léxica
             return f.readlines()  # Retorna as linhas do arquivo como uma lista
 
     def analisar(self):  # Função principal para análise léxica
-        delimitadores = ["=", ";", " "]  # Define os delimitadores
+        delimitadores = ["=", ";", " ",'{', '}', '(', ')']  # Define os delimitadores
         for numero_linha, linha in enumerate(self.linhas, start=1):  # Itera sobre as linhas do arquivo
             palavra = ""  # Inicializa uma palavra temporária
             for char in linha:  # Itera sobre os caracteres da linha
@@ -46,14 +46,13 @@ class AnalisadorLexico:  # Classe para realizar a análise léxica
         elif token.isdigit():  # Verifica se o token é um número inteiro
             self.tokens.append(('INTEIRO', token, linha))  # Adiciona o token à lista como inteiro
        
-        elif token in [' ', '\t', '\n', ',', ';', '(', ')', '{', '}', '[', ']',
-                         '.', ':']:  # Verifica se o token é um delimitador      
+        elif token in ["=", ";", " ",'{', '}', '(', ')']:  # Verifica se o token é um delimitador      
             self.tokens.append(('DELIMITADOR', token, linha))  # Adiciona o token à lista como delimitador
        
         elif token in ['ou', 'e']:  # Verifica se o token é um operador lógico
             self.tokens.append(('LOGICOS', token, linha))  # Adiciona o token à lista como lógico
       
-        elif token in ['!=', '>', '<', '>=', '<=']:  # Verifica se o token é um operador relacional
+        elif token in [' ', '==','!=', '>', '<', '>=', '<=']:  # Verifica se o token é um operador relacional
             self.tokens.append(('RELACIONAIS', token, linha))  # Adiciona o token à lista como relacional
        
         elif token in ['+', '-', '*', '/', 'div']:  # Verifica se o token é um operador aritmético

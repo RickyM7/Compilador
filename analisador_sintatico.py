@@ -1,152 +1,254 @@
-# Classe responsável pela análise sintática do código fonte
 class AnalisadorSintatico:
-    # Inicializa o analisador sintático com os tokens e a tabela de símbolos
     def __init__(self, tokens, tabela_simbolos):
-        self.tokens = tokens  # Lista de tokens gerados pelo analisador léxico
-        self.tabela_simbolos = tabela_simbolos  # Instância da tabela de símbolos
-        self.pos = 0  # Posição atual na lista de tokens
+        self.tokens = tokens
+        self.tabela_simbolos = tabela_simbolos
+        self.pos = 0
+        self.token_atual = None
+        self.escopo = []  # Pilha para rastrear os escopos
+        self.avancar()
 
-    # Método principal para realizar a análise sintática
-    def analisar(self):
-        while self.pos < len(self.tokens):  # Continua até o final da lista de tokens
-            token = self.tokens[self.pos]  # Obtém o token atual
-            if token[0] == "RESERVADA":  # Verifica se o token é uma palavra reservada
-                if token[1] in ["se", "senao"]:  # Verifica se é um condicional
-                    self.tratar_condicional()  # Chama o método para tratar o condicional
-                elif token[1] == "enquanto":  # Verifica se é um laço
-                    self.tratar_laco()  # Chama o método para tratar o laço
-                else:
-                    self.declaracao_variavel()  # Trata declarações de variáveis
-            elif token[0] == "IDENTIFICADOR":  # Verifica se o token é um identificador
-                self.atribuicao()  # Chama o método para tratar atribuições
-            else:
-                # Exibe erro sintático se o token não for esperado
-                print(f"Erro sintático na linha {token[2]}: Comando inesperado.")
-                self.pos += 1  # Avança para o próximo token
-
-    # Método para tratar declarações condicionais (ex.: "se" e "senao")
-    def tratar_condicional(self):
-        self.pos += 1  # Avança o token para verificar a condição
-        if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "(":  # Verifica abertura de parênteses
-            self.pos += 1  # Avança para dentro da condição
-            self.tratar_expressao()  # Chama o método para tratar a expressão
-            if self.pos < len(self.tokens) and self.tokens[self.pos][1] == ")":  # Verifica fechamento de parênteses
-                print("contem )")
-                self.pos += 1  # Avança após a condição
-                if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "{":  # Verifica abertura de bloco
-                    self.pos += 1  # Avança para dentro do bloco
-                    self.tratar_bloco()  # Trata o conteúdo do bloco
-                    if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "}":  # Verifica fechamento de bloco
-                        self.pos += 1  # Avança após o bloco
-                        if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "senao":  # Verifica "senao"
-                            self.tratar_senao()  # Chama o método para tratar o "senao"
-                    else:
-                        # Exibe erro caso o bloco "se" não seja fechado corretamente
-                        print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '}}' no final do bloco 'se'.")
-                else:
-                    # Exibe erro caso não haja abertura de bloco após a condição
-                    print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '{{' após condição do 'se'.")
-        else:
-            # Exibe erro caso não haja abertura de parênteses após "se"
-            print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '(' após 'se'.")
-
-    # Método para tratar o bloco "senao" em condicionais
-    def tratar_senao(self):
-        self.pos += 1  # Avança para verificar o bloco "senao"
-        if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "{":  # Verifica abertura do bloco
-            self.pos += 1  # Avança para dentro do bloco "senao"
-            self.tratar_bloco()  # Trata o conteúdo do bloco
-            if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "}":  # Verifica fechamento do bloco
-                self.pos += 1  # Avança após o bloco
-            else:
-                # Exibe erro caso o bloco "senao" não seja fechado corretamente
-                print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '}}' no final do bloco 'senao'.")
-        else:
-            # Exibe erro caso não haja abertura de bloco após "senao"
-            print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '{{' após 'senao'.")
-
-    # Método para tratar laços (ex.: "enquanto")
-    def tratar_laco(self):
-        self.pos += 1  # Avança para verificar a condição do laço
-        if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "(":  # Verifica abertura de parênteses
-            self.pos += 1  # Avança para dentro da condição
-            self.tratar_expressao()  # Trata a expressão condicional
-            if self.pos < len(self.tokens) and self.tokens[self.pos][1] == ")":  # Verifica fechamento de parênteses
-                self.pos += 1  # Avança após a condição
-                if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "{":  # Verifica abertura de bloco
-                    self.pos += 1  # Avança para dentro do bloco
-                    self.tratar_bloco()  # Trata o conteúdo do bloco
-                    if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "}":  # Verifica fechamento do bloco
-                        self.pos += 1  # Avança após o bloco
-                    else:
-                        # Exibe erro caso o bloco do "enquanto" não seja fechado
-                        print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '}}' no final do bloco 'enquanto'.")
-                else:
-                    # Exibe erro caso não haja abertura de bloco após a condição
-                    print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '{{' após condição do 'enquanto'.")
-            else:
-                # Exibe erro caso não haja fechamento de parênteses após a condição
-                print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado ')' após a expressão condicional.")
-        else:
-            # Exibe erro caso não haja abertura de parênteses após "enquanto"
-            print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado '(' após 'enquanto'.")
-
-    def tratar_bloco(self):
-        while self.pos < len(self.tokens) and self.tokens[self.pos][1] != "}":
-            self.analisar()
-
-    def tratar_expressao(self):
-        if self.pos < len(self.tokens) and self.tokens[self.pos][0] in ["INTEIRO", "BOOLEANO", "IDENTIFICADOR", "RELACIONAIS"]:
+    def avancar(self):
+        if self.pos < len(self.tokens):
+            self.token_atual = self.tokens[self.pos]
             self.pos += 1
+        else:
+            self.token_atual = ('EOF', None, None)
+
+    def consumir(self, tipo):
+        if self.token_atual[0] == tipo:
+            self.avancar()
+        else:
+            raise SyntaxError(f"Esperado {tipo}, encontrado {self.token_atual[0]} na linha {self.token_atual[2]}.")
+     
+        
+    def entrar_escopo(self, tipo):
+        self.escopo.append(tipo)
+
+    def sair_escopo(self):
+        if self.escopo:
+            self.escopo.pop()
+
+    def escopo_atual(self):
+        return self.escopo[-1] if self.escopo else None
+
+
+    def analisar(self):
+        try:
+            while self.token_atual[0] != "EOF":
+                self.declaracao()
+            print("Análise sintática concluída com sucesso!")
+            return True
+        except SyntaxError as e:
+            print(f"Erro sintático: {e}")
+            return False
+
+    def declaracao(self):
+        if self.token_atual[0] == "RESERVADA":
+            if self.token_atual[1] in ["int", "boo"]:
+                if self.tokens[self.pos][1] == "func":
+                    self.declaracao_funcao()
+                else:
+                    self.declaracao_variavel()
+            elif self.token_atual[1] == "proc":
+                self.declaracao_procedimento()
+            elif self.token_atual[1] in ["se", "senao", "enquanto", "leia", "escreva", "retorne", "continue", "pare"]:
+                self.comando()
+            else:
+                raise SyntaxError(f"Comando não reconhecido {self.token_atual[1]} na linha {self.token_atual[2]}.")
+        elif self.token_atual[0] == "IDENTIFICADOR":
+            self.atribuicao_chamada()
+        else:
+            raise SyntaxError(f"Token não reconhecido {self.token_atual[0]} na linha {self.token_atual[2]}.")
 
     def declaracao_variavel(self):
-        tipo = self.tokens[self.pos][1]
-        self.pos += 1
-        if self.pos < len(self.tokens) and self.tokens[self.pos][0] == "IDENTIFICADOR":
-            identificador = self.tokens[self.pos][1]
-            self.pos += 1
-            if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "=":
-                self.pos += 1
-                if self.pos < len(self.tokens) and self.tokens[self.pos][0] in ["INTEIRO", "BOOLEANO"]:
-                    valor = self.tokens[self.pos][1]
-                    self.tabela_simbolos.adicionar(identificador, tipo, valor)
-                    self.pos += 1
-                else:
-                    print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Valor inválido na atribuição.")
-            else:
-                print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Esperado '=' após identificador.")
-            if self.pos < len(self.tokens) and self.tokens[self.pos][1] == ";":
-                self.pos += 1
-            else:
-                print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Esperado ';' no final da declaração.")
-        else:
-            print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Esperado identificador após tipo de variável.")
+        tipo = self.token_atual[1]
+        self.consumir("RESERVADA")  # Consome o tipo
+        identificador = self.token_atual[1]
+        self.consumir("IDENTIFICADOR")  # Consome o identificador
 
-    def atribuicao(self):
-        if self.tokens[self.pos][0] == "IDENTIFICADOR":
-            identificador = self.tokens[self.pos][1]
-            self.pos += 1
-            if self.pos < len(self.tokens) and self.tokens[self.pos][1] == "=":
-                self.pos += 1
-                if self.pos < len(self.tokens) and self.tokens[self.pos][0] in ["INTEIRO", "BOOLEANO", "IDENTIFICADOR"]:
-                    valor = self.tokens[self.pos][1]
-                    simbolo = next((s for s in self.tabela_simbolos.simbolos if s["identificador"] == identificador), None)
-                    if simbolo:
-                        if (simbolo["tipo"] == "int" and self.tokens[self.pos][0] == "INTEIRO") or \
-                           (simbolo["tipo"] == "boo" and self.tokens[self.pos][0] == "BOOLEANO"):
-                            simbolo["valor"] = valor
-                        else:
-                            print(f"Erro semântico na linha {self.tokens[self.pos][2]}: Tipo incompatível na atribuição.")
-                    else:
-                        print(f"Erro semântico na linha {self.tokens[self.pos][2]}: Identificador '{identificador}' não declarado.")
-                    self.pos += 1
-                else:
-                    print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Valor inválido na atribuição.")
-                if self.pos < len(self.tokens) and self.tokens[self.pos][1] == ";":
-                    self.pos += 1
-                else:
-                    print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Esperado ';' no final da atribuição.")
-            else:
-                print(f"Erro sintático na linha {self.tokens[self.pos - 1][2]}: Esperado '=' após identificador.")
+        valor = None
+        if self.token_atual[0] == "ATRIBUICAO":
+            self.consumir("ATRIBUICAO")
+            valor = self.expressao()
+        self.tabela_simbolos.adicionar(identificador, tipo, valor)
+        self.consumir("DELIMITADOR")  # Consome o ponto e vírgula
+
+    def declaracao_procedimento(self):
+        self.consumir("RESERVADA")  # Consome 'proc'
+        nome = self.token_atual[1]
+        self.consumir("IDENTIFICADOR")
+        self.consumir("DELIMITADOR")  # Consome '('
+        if self.token_atual[1] in ("int", "boo"):
+            self.parametro()
+            while self.token_atual[1] == ",":
+                self.consumir("DELIMITADOR")
+                self.parametro()
+        self.consumir("DELIMITADOR")  # Consome ')'
+        self.consumir("DELIMITADOR")  # Consome '{'
+        while self.token_atual[1] != "}":
+            self.declaracao()
+        self.consumir("DELIMITADOR")  # Consome '}'
+        self.tabela_simbolos.adicionar(nome, "proc")
+
+    def declaracao_funcao(self):
+        tipo = self.token_atual[1]  # Tipo da função
+        self.consumir("RESERVADA")  # Consome tipo
+        self.consumir("RESERVADA")  # Consome 'func'
+        nome = self.token_atual[1]
+        self.consumir("IDENTIFICADOR")
+        self.consumir("DELIMITADOR")  # Consome '('
+        if self.token_atual[1] in ("int", "boo"):
+            self.parametro()
+            while self.token_atual[1] == ",":
+                self.consumir("DELIMITADOR")
+                self.parametro()
+        self.consumir("DELIMITADOR")  # Consome ')'
+        self.consumir("DELIMITADOR")  # Consome '{'
+
+        self.entrar_escopo("funcao")  # Entra no escopo de função
+        while self.token_atual[1] != "}":
+            self.declaracao()
+        self.sair_escopo()  # Sai do escopo de função
+        self.consumir("DELIMITADOR")  # Consome '}'
+        self.tabela_simbolos.adicionar(nome, tipo)
+
+
+    def parametro(self):
+        tipo = self.token_atual[1]
+        self.consumir("RESERVADA")
+        identificador = self.token_atual[1]
+        self.consumir("IDENTIFICADOR")
+        self.tabela_simbolos.adicionar(identificador, tipo)
+
+    def atribuicao_chamada(self):
+        identificador = self.token_atual[1]
+        if not self.identificador_declarado(identificador):
+            raise SyntaxError(f"Identificador '{identificador}' não declarado.")
+        self.consumir("IDENTIFICADOR")
+        if self.token_atual[0] == "ATRIBUICAO":
+            self.consumir("ATRIBUICAO")
+            valor = self.expressao()
+            self.tabela_simbolos.atualizar(identificador, valor)
+            self.consumir("DELIMITADOR")
+        elif self.token_atual[0] == "DELIMITADOR" and self.token_atual[1] == "(":
+            self.chamada()
+
+    def chamada(self):
+        self.consumir("DELIMITADOR")
+        if self.token_atual[0] != "DELIMITADOR" or self.token_atual[1] != ")":
+            self.argumentos()
+        self.consumir("DELIMITADOR")
+        self.consumir("DELIMITADOR")
+
+    def argumentos(self):
+        self.expressao()
+        while self.token_atual[1] == ",":
+            self.consumir("DELIMITADOR")
+            self.expressao()
+
+    def comandos_simples(self):
+        self.consumir("RESERVADA")
+        if self.token_atual[1] == "(":
+            self.consumir("DELIMITADOR")
+            self.expressao()  # qualquer expressão dentro do leia, escreva
+            self.consumir("DELIMITADOR")
+        self.consumir("DELIMITADOR")
+
+    def comando(self):
+        if self.token_atual[1] == "se":
+            self.tratar_condicional()
+        elif self.token_atual[1] == "senao":
+            self.tratar_condicional()
+        elif self.token_atual[1] == "enquanto":
+            self.tratar_laco()
+        elif self.token_atual[1] == "retorne":
+            if self.escopo_atual() != "funcao":
+                raise SyntaxError(f"'retorne' só pode ser usado em funções na linha {self.token_atual[2]}.")
+            self.consumir("RESERVADA")
+            self.expressao()
+            self.consumir("DELIMITADOR")
+        elif self.token_atual[1] in ["continue", "pare"]:
+            if self.escopo_atual() != "laco":
+                raise SyntaxError(f"'{self.token_atual[1]}' só pode ser usado em laços na linha {self.token_atual[2]}.")
+            self.consumir("RESERVADA")
+            self.consumir("DELIMITADOR")
+        elif self.token_atual[1] in ["leia", "escreva"]:
+            self.comandos_simples()
         else:
-            print(f"Erro sintático na linha {self.tokens[self.pos][2]}: Esperado identificador no início da atribuição.")
+            raise SyntaxError(f"Comando inválido '{self.token_atual[1]}' na linha {self.token_atual[2]}.")
+
+
+
+    def tratar_condicional(self):
+        if self.token_atual[1] == "se":
+            self.consumir("RESERVADA")
+            self.consumir("DELIMITADOR")
+            self.expressao()
+            self.consumir("DELIMITADOR")
+            self.consumir("DELIMITADOR")
+            while self.token_atual[1] != "}":
+                self.declaracao()
+            self.consumir("DELIMITADOR")
+        else:
+            self.consumir("RESERVADA")
+            self.consumir("DELIMITADOR")
+            while self.token_atual[1] != "}":
+                self.declaracao()
+            self.consumir("DELIMITADOR")
+
+
+    def tratar_laco(self):
+        self.consumir("RESERVADA")  # Consome 'enquanto'
+        self.consumir("DELIMITADOR")  # Consome '('
+        self.expressao()
+        self.consumir("DELIMITADOR")  # Consome ')'
+        self.consumir("DELIMITADOR")  # Consome '{'
+        
+        self.entrar_escopo("laco")  # Entra no escopo de laço
+        while self.token_atual[1] != "}":
+            self.declaracao()
+        self.sair_escopo()  # Sai do escopo de laço
+        self.consumir("DELIMITADOR")  # Consome '}'
+
+
+    def expressao(self):
+        self.expressao_simples()
+        if self.token_atual[0] == 'RELACIONAIS':
+            self.consumir('RELACIONAIS')
+            self.expressao_simples()
+
+    def expressao_simples(self):
+        self.termo()
+        while self.token_atual[0] == 'ARITMETICOS':
+            self.consumir('ARITMETICOS')
+            self.termo()
+
+    def termo(self):
+        self.fator()
+        while self.token_atual[0] == 'ARITMETICOS':
+            self.consumir('ARITMETICOS')
+            self.fator()
+
+    def fator(self):
+        if self.token_atual[0] == 'IDENTIFICADOR':
+            # Verifica se o identificador foi declarado
+            if not self.identificador_declarado(self.token_atual[1]):
+                raise SyntaxError(f"Identificador '{self.token_atual[1]}' não declarado na linha {self.token_atual[2]}.")
+            self.consumir('IDENTIFICADOR')
+        elif self.token_atual[0] == 'BOOLEANO':
+            # Verifica se o valor é um booleano válido (VERDADEIRO ou FALSO)
+            if self.token_atual[1] not in ['VERDADEIRO', 'FALSO']:
+                raise SyntaxError(f"Valor booleano inválido '{self.token_atual[1]}' na linha {self.token_atual[2]}.")
+            self.consumir('BOOLEANO')
+        elif self.token_atual[0] == 'INTEIRO':
+            self.consumir('INTEIRO')
+        elif self.token_atual[0] == 'DELIMITADOR' and self.token_atual[1] == '(':
+            self.consumir('DELIMITADOR')  # Consome '('
+            self.expressao()
+            self.consumir('DELIMITADOR')  # Consome ')'
+        else:
+            raise SyntaxError(f"Fator inválido {self.token_atual[0]} '{self.token_atual[1]}' na linha {self.token_atual[2]}.")
+
+
+    def identificador_declarado(self, identificador):
+        return any(simbolo['identificador'] == identificador for simbolo in self.tabela_simbolos.simbolos)

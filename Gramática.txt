@@ -3,7 +3,7 @@ Curso: Bacharelado em Ciência da Computação
 Disciplina: Compiladores 
 Docente: Maria Aparecida Amorim Sibaldo de Carvalho
 Discentes: Gison Vilaça Morais
-		 Ricardo Martins da Silva
+		   Ricardo Martins da Silva
 Semestre: 2024.2 
 Data: 11/11/2024
 
@@ -12,17 +12,17 @@ Data: 11/11/2024
 Atividade 1: Gramática
 
 Características da BNF/Gramática:
- Declaração de variáveis de tipo inteiro e booleano
- Declaração de procedimentos e funções (sem e com parâmetros)
- Comandos de atribuição
- Chamada de procedimentos e funções
- Comando de desvio condicional (if e else)
- Comando de laço (while)
- Comando de retorno de valor
- Comandos de desvio incondicional (break e continue)
- Comando de impressão de constante e variável na tela
-Expressões aritméticas (+, -, * e /)
-Expressões booleanas (==, !=, >, >=, < e <=)
+	Declaração de variáveis de tipo inteiro e booleano
+	Declaração de procedimentos e funções (sem e com parâmetros)
+	Comandos de atribuição
+	Chamada de procedimentos e funções
+	Comando de desvio condicional (if e else)
+	Comando de laço (while)
+	Comando de retorno de valor
+	Comandos de desvio incondicional (break e continue)
+	Comando de impressão de constante e variável na tela
+	Expressões aritméticas (+, -, * e /)
+	Expressões booleanas (==, !=, >, >=, < e <=)
 
 Legendas e Observações da BNF/Gramática:
 “< >”: São variáveis (símbolos não-terminais).
@@ -30,12 +30,11 @@ Em negrito: São palavras reservadas ou símbolos terminais.
 “::=”: É usado para representar a geração.
 “[ ]”: É um conteúdo que pode existir ou não, se sim, será uma vez.
 “{ }”: Conteúdo que pode ser gerado inúmeras vezes ou nenhuma.
-                 Obs.: Se for “{ }“ em negrito, é a maneira que estará no código.
+	Obs.: Se for “{ }“ em negrito, é a maneira que estará no código.
 “( )”: Também está relacionado à maneira que estará no código.
 Estrutura: Não é indentada.
-        Obs.: No exemplo de código há indentação para ilustração.
+	Obs.: No exemplo de código há indentação para ilustração.
 // EXEMPLO DE CÓDIGO:
-
 
 int a;
 boo b;
@@ -59,20 +58,24 @@ int c;
 c = Nome2(4);
 
 enquanto(c>2){
-se(c<2){
-pare;
+	se(c<2){
+		pare;
+	} senao {
+		Ac = c-1;
+		continue;
+	}
 }
-} senao {
-	c = c-1;
-	continue;
-}
-}
-
 
 GRAMÁTICA
 
+0 - Inicialização do Programa (Variável Inicial):
 
+<Programa> ::= <Declaração> {<Declaração>}
 
+<Declaração> ::= (<Declaração de variáveis> |
+<Declaração de Procedimento> |
+<Declaração de Função> |
+<Comando> )
 
 1 - Declaração de Variáveis:
 
@@ -80,41 +83,34 @@ GRAMÁTICA
 
 <Tipo> ::= (int | boo)
 
-
-
-
 2 - Declaração de Procedimento e Função:
 
 <Declaração de Procedimento> ::= proc <Identificador> ({,<Parâmetro>}) {
-							<Bloco do Procedimento>
-							}
+<Bloco do Procedimento>
+}
 
 <Bloco do Procedimento> ::= [<Declaração de variáveis>] <Comandos>
 
-<Declaração de Função> ::= func <Identificador> (<Parâmetro>) {
-							<Bloco do Função>
-							}
+<Declaração de Função> ::= <Tipo> func <Identificador> (<Parâmetro>) {
+<Bloco do Função>
+}
 
 <Bloco da Função> ::= [<Declaração de variáveis>] <Comandos>
 
 <Parâmetro> ::= <Tipo> <Identificador> [,<Parâmetro>]
 
-
-
-
-
-
 3 - Comandos:
 
-<Comandos> ::= (<Comando Chamar>|
+<Comandos> ::= <Comando> {<Comando>}
+
+<Comando> ::= (<Comando Chamar> |
 <Comando Condicional> |
 <Comando Enquanto> |
 <Comando Leia> |
-<Comando Escreva> |
-<Comandos>)
+<Comando Escreva>)
 
 <Comando Chamar> ::= (<Comando Atribua>|
-<Chamada de Procedimento> | 
+<Chamada de Procedimento> |
 <Chamada de Função>)
 
 <Comando Atribua> ::= <Identificador> = <Expressão>
@@ -123,32 +119,28 @@ GRAMÁTICA
 
 <Comando Condicional> ::= se (<Expressão>) {
 <Comando>
-} [senao { 
+} [senao {
 <Comando>
 }]
 
 <Comando Enquanto> ::= enquanto (<Expressão>){
 <Comando>
-						}
+}
 
 <Comando Leitura> ::= leia(<Identificador>)
 
 <Comando Escrita> ::= escreva(<Identificador>)
-
-
-
-
 
 4 - Expressões:
 
 <Expressão>::= <Expressão Simples> [<Operador Relacional>
 <Expressão simples>]
 
-<Operador Relacional>::= (<> | = | < | <= | > | >=)
+<Operador Relacional>::= (== | != | < | <= | > | >=)
 
 <Expressão Simples> ::= [ + | - ] <Termo> {( + | - | ou) <Termo> }
 
-<Termo>::= <Fator> {(* | div | e) <Fator>}
+<Termo>::= <Fator> {(* | / | e) <Fator>}
 
 <Fator> ::= (<Variável> | <Número> | <Chamada de Função> |
 (<Expressão>) | VERDADEIRO| FALSO
@@ -158,10 +150,7 @@ nao <Fator>)
 
 <Chamada de Função> ::= <Identificador> (<Argumentos>)
 
-<Argumentos> ::=  (<Expressão> {,<Expressão>})
-
-
-
+<Argumentos> ::= (<Expressão> {,<Expressão>})
 
 5 - Números e Identificadores:
 

@@ -4,7 +4,7 @@ from tabela_simbolos import TabelaSimbolos  # Importa a classe para manipulaçã
 
 def main():  # Função principal do programa
     # Caminho do arquivo de código-fonte
-    caminho_arquivo = "codigo.txt"  # Define o caminho do arquivo com o código fonte a ser analisado
+    caminho_arquivo = "Compilador/codigo_geral.txt"  # Define o caminho do arquivo com o código fonte a ser analisado
 
     # Inicializa o analisador léxico
     analisador_lexico = AnalisadorLexico(caminho_arquivo)  # Cria uma instância do analisador léxico

@@ -6,9 +6,11 @@ class TabelaSimbolos:
         for simbolo in self.simbolos:
             if simbolo['identificador'] == identificador:
                 simbolo['tipo'] = simbolo['tipo'] or tipo
-                simbolo['valor'] = valor
+                if valor is not None:  # Não sobrescreve valor se ele for None
+                    simbolo['valor'] = valor
                 return
         self.simbolos.append({'identificador': identificador, 'tipo': tipo, 'valor': valor})
+
 
     def atualizar(self, identificador, valor):
         for simbolo in self.simbolos:

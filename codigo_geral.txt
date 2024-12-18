@@ -13,8 +13,8 @@ int func Exemplo2(int a) {
 
 Exemplo1(3, VERDADEIRO);
 
-int c = 0;
-c = Exemplo2(4);
+int c = 4;
+
 
 enquanto (c > 2) {
     se (c < 2) {
@@ -24,3 +24,5 @@ enquanto (c > 2) {
         continue;
     }
 }
+
+c = c + 2;

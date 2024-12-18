@@ -20,7 +20,7 @@ class AnalisadorSintatico:
         else:
             raise SyntaxError(f"Esperado {tipo}, encontrado {self.token_atual[0]} na linha {self.token_atual[2]}.")
      
-        
+    
     def entrar_escopo(self, tipo):
         self.escopo.append(tipo)
 
@@ -97,7 +97,7 @@ class AnalisadorSintatico:
         nome = self.token_atual[1]
         self.consumir("IDENTIFICADOR")
         self.consumir("DELIMITADOR")  # Consome '('
-        if self.token_atual[1] in ("int", "boo"):
+        if self.token_atual[0] == "RESERVADA":
             self.parametro()
             while self.token_atual[1] == ",":
                 self.consumir("DELIMITADOR")
@@ -106,11 +106,17 @@ class AnalisadorSintatico:
         self.consumir("DELIMITADOR")  # Consome '{'
 
         self.entrar_escopo("funcao")  # Entra no escopo de função
+        retorno = None
         while self.token_atual[1] != "}":
-            self.declaracao()
+            if self.token_atual[0] == "RESERVADA" and self.token_atual[1] == "retorne":
+                self.consumir("RESERVADA")  # Consome 'retorne'
+                retorno = self.expressao()  # Avalia o valor a ser retornado
+                self.consumir("DELIMITADOR")  # Consome o ponto e vírgula ';'
+            else:
+                self.declaracao()
         self.sair_escopo()  # Sai do escopo de função
         self.consumir("DELIMITADOR")  # Consome '}'
-        self.tabela_simbolos.adicionar(nome, tipo)
+        self.tabela_simbolos.adicionar(nome, tipo, retorno)
 
 
     def parametro(self):
@@ -125,20 +131,46 @@ class AnalisadorSintatico:
         if not self.identificador_declarado(identificador):
             raise SyntaxError(f"Identificador '{identificador}' não declarado.")
         self.consumir("IDENTIFICADOR")
-        if self.token_atual[0] == "ATRIBUICAO":
+
+        # Verifica se é uma chamada de função ou procedimento
+        if self.token_atual[0] == "DELIMITADOR" and self.token_atual[1] == "(":
+            retorno = self.chamada(identificador)  # Chama a função ou procedimento
+            # Verifica se é uma atribuição válida
+            for simbolo in self.tabela_simbolos.simbolos:
+                if simbolo['identificador'] == identificador and simbolo['tipo'] == 'proc':
+                    self.consumir("DELIMITADOR")  # Consome o ponto e vírgula após a chamada
+                    return  # Procedimentos não retornam valores
+            # Se for uma função, pode usar o retorno
+            if retorno is not None:
+                self.tabela_simbolos.atualizar(identificador, retorno)
+            self.consumir("DELIMITADOR")  # Consome o ponto e vírgula após a atribuição
+        elif self.token_atual[0] == "ATRIBUICAO":
             self.consumir("ATRIBUICAO")
             valor = self.expressao()
             self.tabela_simbolos.atualizar(identificador, valor)
-            self.consumir("DELIMITADOR")
-        elif self.token_atual[0] == "DELIMITADOR" and self.token_atual[1] == "(":
-            self.chamada()
+            self.consumir("DELIMITADOR")  # Consome o ponto e vírgula
 
-    def chamada(self):
-        self.consumir("DELIMITADOR")
+
+    def chamada(self, nome_funcao):
+        self.consumir("DELIMITADOR")  # Consome '('
+        argumentos = []
         if self.token_atual[0] != "DELIMITADOR" or self.token_atual[1] != ")":
-            self.argumentos()
-        self.consumir("DELIMITADOR")
-        self.consumir("DELIMITADOR")
+            argumentos.append(self.expressao())
+            while self.token_atual[1] == ",":
+                self.consumir("DELIMITADOR")
+                argumentos.append(self.expressao())
+        self.consumir("DELIMITADOR")  # Consome ')'
+
+        for simbolo in self.tabela_simbolos.simbolos:
+            if simbolo['identificador'] == nome_funcao:
+                if simbolo['tipo'] == 'proc':
+                    return None
+                elif simbolo['tipo'] == 'int':
+                    return simbolo['valor'] if 'valor' in simbolo else 0  # Retorna valor
+                elif simbolo['tipo'] == 'boo':
+                    return simbolo['valor'] if 'valor' in simbolo else 'VERDADEIRO'
+        raise SyntaxError(f"Função '{nome_funcao}' não declarada.")
+
 
     def argumentos(self):
         self.expressao()
@@ -177,8 +209,6 @@ class AnalisadorSintatico:
         else:
             raise SyntaxError(f"Comando inválido '{self.token_atual[1]}' na linha {self.token_atual[2]}.")
 
-
-
     def tratar_condicional(self):
         if self.token_atual[1] == "se":
             self.consumir("RESERVADA")
@@ -196,56 +226,129 @@ class AnalisadorSintatico:
                 self.declaracao()
             self.consumir("DELIMITADOR")
 
-
     def tratar_laco(self):
         self.consumir("RESERVADA")  # Consome 'enquanto'
         self.consumir("DELIMITADOR")  # Consome '('
-        self.expressao()
+        self.expressao()  # Avalia a condição do laço
         self.consumir("DELIMITADOR")  # Consome ')'
         self.consumir("DELIMITADOR")  # Consome '{'
-        
+
         self.entrar_escopo("laco")  # Entra no escopo de laço
-        while self.token_atual[1] != "}":
-            self.declaracao()
-        self.sair_escopo()  # Sai do escopo de laço
+        try:
+            while self.token_atual[0] != "DELIMITADOR" or self.token_atual[1] != "}":
+                if self.token_atual[0] == "EOF":
+                    raise SyntaxError(f"Fim inesperado ao processar o laço na linha {self.token_atual[2]}.")
+                self.declaracao()  # Processa as declarações dentro do laço
+        finally:
+            self.sair_escopo()  # Sai do escopo de laço, mesmo em caso de erro
+
         self.consumir("DELIMITADOR")  # Consome '}'
 
 
     def expressao(self):
-        self.expressao_simples()
-        if self.token_atual[0] == 'RELACIONAIS':
+        valor = self.expressao_simples()
+        while self.token_atual[0] == 'RELACIONAIS':
+            operador = self.token_atual[1]
             self.consumir('RELACIONAIS')
-            self.expressao_simples()
+            proximo_valor = self.expressao_simples()
+
+            # Avalia a expressão relacional - tratamento de tipos mais robusto
+            try:
+                if operador == '>':
+                    valor = valor > proximo_valor
+                elif operador == '<':
+                    valor = valor < proximo_valor
+                elif operador == '==':
+                    valor = valor == proximo_valor
+                elif operador == '!=':
+                    valor = valor != proximo_valor
+                elif operador == '>=':
+                    valor = valor >= proximo_valor
+                elif operador == '<=':
+                    valor = valor <= proximo_valor
+            except TypeError:  # Trata erros de tipo na comparação
+                raise SyntaxError(f"Tipos incompatíveis na comparação '{operador}' na linha {self.token_atual[2]}.")
+        return valor
+
 
     def expressao_simples(self):
-        self.termo()
-        while self.token_atual[0] == 'ARITMETICOS':
+        valor = self.termo()
+        while self.token_atual[0] == 'ARITMETICOS' and self.token_atual[1] in ('+', '-'): #Verifica operadores + e -
+            operador = self.token_atual[1]
             self.consumir('ARITMETICOS')
-            self.termo()
+            proximo_valor = self.termo()
+            try:
+                if operador == '+':
+                    valor += proximo_valor
+                elif operador == '-':
+                    valor -= proximo_valor
+            except TypeError:
+                raise SyntaxError(f"Tipos incompatíveis na operação '{operador}' na linha {self.token_atual[2]}.")
+        return valor
 
     def termo(self):
-        self.fator()
-        while self.token_atual[0] == 'ARITMETICOS':
+        valor = self.fator()
+        while self.token_atual[0] == 'ARITMETICOS' and self.token_atual[1] in ('*', '/'): #Verifica operadores * e /
+            operador = self.token_atual[1]
             self.consumir('ARITMETICOS')
-            self.fator()
+            proximo_valor = self.fator()
+            try:
+                if operador == '*':
+                    valor *= proximo_valor
+                elif operador == '/':
+                    if proximo_valor == 0:
+                        raise ZeroDivisionError(f"Divisão por zero na linha {self.token_atual[2]}.")
+                    valor //= proximo_valor #Divisão inteira
+            except TypeError:
+                raise SyntaxError(f"Tipos incompatíveis na operação '{operador}' na linha {self.token_atual[2]}.")
+            except ZeroDivisionError as zde:
+                raise SyntaxError(f"{zde}")
+        return valor
 
     def fator(self):
         if self.token_atual[0] == 'IDENTIFICADOR':
+            identificador = self.token_atual[1]
+            
             # Verifica se o identificador foi declarado
-            if not self.identificador_declarado(self.token_atual[1]):
-                raise SyntaxError(f"Identificador '{self.token_atual[1]}' não declarado na linha {self.token_atual[2]}.")
+            if not self.identificador_declarado(identificador):
+                raise SyntaxError(f"Identificador '{identificador}' não declarado na linha {self.token_atual[2]}.")
+
             self.consumir('IDENTIFICADOR')
+
+            # Verifica se é uma chamada de função
+            if self.token_atual[0] == 'DELIMITADOR' and self.token_atual[1] == '(':
+                self.consumir('DELIMITADOR')  # Consome '('
+                if self.token_atual[0] != 'DELIMITADOR' or self.token_atual[1] != ')':
+                    self.argumentos()
+                self.consumir('DELIMITADOR')  # Consome ')'
+
+                # Retorna um valor simbólico dependendo do tipo da função
+                for simbolo in self.tabela_simbolos.simbolos:
+                    if simbolo['identificador'] == identificador and simbolo['tipo'] == 'int':
+                        return 0  # Retorna um valor padrão para funções do tipo int
+                    elif simbolo['identificador'] == identificador and simbolo['tipo'] == 'boo':
+                        return 'FALSO'  # Retorna um valor padrão para funções do tipo boo
+                return None  # Caso não encontre o tipo, retorna None
+
+            # Caso contrário, é apenas um identificador
+            for simbolo in self.tabela_simbolos.simbolos:
+                if simbolo['identificador'] == identificador:
+                    return simbolo['valor']
+            raise ValueError(f"Identificador '{identificador}' não possui valor associado.")
+
         elif self.token_atual[0] == 'BOOLEANO':
-            # Verifica se o valor é um booleano válido (VERDADEIRO ou FALSO)
-            if self.token_atual[1] not in ['VERDADEIRO', 'FALSO']:
-                raise SyntaxError(f"Valor booleano inválido '{self.token_atual[1]}' na linha {self.token_atual[2]}.")
+            valor = self.token_atual[1]
             self.consumir('BOOLEANO')
+            return valor
         elif self.token_atual[0] == 'INTEIRO':
+            valor = int(self.token_atual[1])
             self.consumir('INTEIRO')
+            return valor
         elif self.token_atual[0] == 'DELIMITADOR' and self.token_atual[1] == '(':
             self.consumir('DELIMITADOR')  # Consome '('
-            self.expressao()
+            valor = self.expressao()
             self.consumir('DELIMITADOR')  # Consome ')'
+            return valor
         else:
             raise SyntaxError(f"Fator inválido {self.token_atual[0]} '{self.token_atual[1]}' na linha {self.token_atual[2]}.")
 

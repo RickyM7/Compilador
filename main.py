@@ -1,33 +1,30 @@
-from analisador_lexico import AnalisadorLexico  # Importa a classe para análise léxica
-from analisador_sintatico import AnalisadorSintatico  # Importa a classe para análise sintática
-from tabela_simbolos import TabelaSimbolos  # Importa a classe para manipulação da tabela de símbolos
+from analisador_lexico import AnalisadorLexico  
+from analisador_sintatico import AnalisadorSintatico  
+from tabela_simbolos import TabelaSimbolos  
 
-def main():  # Função principal do programa
-    # Caminho do arquivo de código-fonte
-    caminho_arquivo = "Compilador/codigo_geral.txt"  # Define o caminho do arquivo com o código fonte a ser analisado
+def main():  
 
-    # Inicializa o analisador léxico
-    analisador_lexico = AnalisadorLexico(caminho_arquivo)  # Cria uma instância do analisador léxico
+    caminho_arquivo = "Compilador/codigo_geral.txt"  
 
-    # Realiza a análise léxica e obtém os tokens
-    tokens = analisador_lexico.analisar()  # Executa a análise léxica para gerar os tokens
+    analisador_lexico = AnalisadorLexico(caminho_arquivo) # Inicializa o analisador léxico
 
-    # Exibe os tokens encontrados
+    tokens = analisador_lexico.analisar() # Realiza a análise léxica e obtém os tokens
+
     print("Tokens:")  # Imprime o cabeçalho para a lista de tokens
     for token in tokens:  # Itera sobre a lista de tokens
         print(f"{token[0]:<15} {token[1]:<15} {token[2]}")  # Exibe o tipo, valor e linha do token
 
-    # Inicializa a tabela de símbolos
-    tabela_simbolos = TabelaSimbolos()  # Cria uma instância da tabela de símbolos
+    
+    tabela_simbolos = TabelaSimbolos() # Inicializa a tabela de símbolos
 
-    # Inicializa o analisador sintático
-    analisador_sintatico = AnalisadorSintatico(tokens, tabela_simbolos)  # Cria uma instância do analisador sintático
+   
+    analisador_sintatico = AnalisadorSintatico(tokens, tabela_simbolos) # Inicializa o analisador sintático
 
-    # Realiza a análise sintática
-    analisador_sintatico.analisar()  # Executa a análise sintática
+   
+    analisador_sintatico.analisar() # Realiza a análise sintática 
 
-    # Exibe a tabela de símbolos
-    tabela_simbolos.exibir()  # Imprime a tabela de símbolos de forma formatada
+    
+    tabela_simbolos.exibir() # Exibe a tabela de símbolos
 
-if __name__ == "__main__":  # Verifica se o script está sendo executado diretamente
-    main()  # Executa a função principal
+if __name__ == "__main__":  
+    main() 

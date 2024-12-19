@@ -12,13 +12,16 @@ class AnalisadorSintatico:
             self.token_atual = self.tokens[self.pos]
             self.pos += 1
         else:
-            self.token_atual = ('EOF', None, None)
+            # Quando alcançamos o EOF, mantenha a linha do último token processado
+            ultima_linha = self.token_atual[2] if self.token_atual else None
+            self.token_atual = ('EOF', None, ultima_linha)
+
 
     def consumir(self, tipo):
         if self.token_atual[0] == tipo:
             self.avancar()
         else:
-            raise SyntaxError(f"Esperado {tipo}, encontrado {self.token_atual[0]} na linha {self.token_atual[2]}.")
+            raise SyntaxError(f"Esperado '{tipo}', encontrado '{self.token_atual[0]}' na linha {self.token_atual[2]}.")
      
     
     def entrar_escopo(self, tipo):
@@ -97,26 +100,27 @@ class AnalisadorSintatico:
         nome = self.token_atual[1]
         self.consumir("IDENTIFICADOR")
         self.consumir("DELIMITADOR")  # Consome '('
+
         if self.token_atual[0] == "RESERVADA":
             self.parametro()
             while self.token_atual[1] == ",":
                 self.consumir("DELIMITADOR")
                 self.parametro()
+
         self.consumir("DELIMITADOR")  # Consome ')'
         self.consumir("DELIMITADOR")  # Consome '{'
 
-        self.entrar_escopo("funcao")  # Entra no escopo de função
-        retorno = None
-        while self.token_atual[1] != "}":
-            if self.token_atual[0] == "RESERVADA" and self.token_atual[1] == "retorne":
-                self.consumir("RESERVADA")  # Consome 'retorne'
-                retorno = self.expressao()  # Avalia o valor a ser retornado
-                self.consumir("DELIMITADOR")  # Consome o ponto e vírgula ';'
-            else:
+        self.entrar_escopo("funcao")
+        try:
+            while self.token_atual[1] != "}":
+                if self.token_atual[0] == "EOF":
+                    raise SyntaxError(f"Delimitador '}}' esperado para encerrar a função '{nome}', mas encontrado EOF.")
                 self.declaracao()
-        self.sair_escopo()  # Sai do escopo de função
+        finally:
+            self.sair_escopo()
+
         self.consumir("DELIMITADOR")  # Consome '}'
-        self.tabela_simbolos.adicionar(nome, tipo, retorno)
+        self.tabela_simbolos.adicionar(nome, tipo, None)
 
 
     def parametro(self):
@@ -247,12 +251,14 @@ class AnalisadorSintatico:
         try:
             while self.token_atual[0] != "DELIMITADOR" or self.token_atual[1] != "}":
                 if self.token_atual[0] == "EOF":
-                    raise SyntaxError(f"Fim inesperado ao processar o laço na linha {self.token_atual[2]}.")
+                    linha_atual = self.token_atual[2] or "desconhecida"
+                    raise SyntaxError(f"Delimitador '}}' esperado para encerrar o laço, mas encontrado EOF na linha {linha_atual}.")
                 self.declaracao()  # Processa as declarações dentro do laço
         finally:
             self.sair_escopo()  # Sai do escopo de laço, mesmo em caso de erro
 
         self.consumir("DELIMITADOR")  # Consome '}'
+
 
 
     def expressao(self):

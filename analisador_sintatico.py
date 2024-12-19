@@ -173,18 +173,28 @@ class AnalisadorSintatico:
 
 
     def argumentos(self):
-        self.expressao()
+        expressoes = [self.expressao()]
         while self.token_atual[1] == ",":
             self.consumir("DELIMITADOR")
-            self.expressao()
+            expressoes.append(self.expressao())
+        return expressoes
 
     def comandos_simples(self):
+        comando = self.token_atual[1]
         self.consumir("RESERVADA")
-        if self.token_atual[1] == "(":
-            self.consumir("DELIMITADOR")
-            self.expressao()  # qualquer expressão dentro do leia, escreva
-            self.consumir("DELIMITADOR")
-        self.consumir("DELIMITADOR")
+        self.consumir("DELIMITADOR")  # Consome '('
+        
+        if self.token_atual[0] != "IDENTIFICADOR":
+            if comando == "leia":
+                raise SyntaxError(f"Comando 'leia' espera um identificador na linha {self.token_atual[2]}.")
+            else:
+                raise SyntaxError(f"Comando 'escreva' espera um identificador na linha {self.token_atual[2]}.")
+        identificador = self.token_atual[1]
+        if not self.identificador_declarado(identificador):
+            raise SyntaxError(f"Identificador '{identificador}' não declarado na linha {self.token_atual[2]}.")
+        self.consumir("IDENTIFICADOR")
+        self.consumir("DELIMITADOR")  # Consome ')'
+        self.consumir("DELIMITADOR")  # Consome ';'
 
     def comando(self):
         if self.token_atual[1] == "se":
@@ -252,45 +262,58 @@ class AnalisadorSintatico:
             self.consumir('RELACIONAIS')
             proximo_valor = self.expressao_simples()
 
-            # Avalia a expressão relacional - tratamento de tipos mais robusto
             try:
                 if operador == '>':
-                    valor = valor > proximo_valor
+                    valor = "VERDADEIRO" if valor > proximo_valor else "FALSO"
                 elif operador == '<':
-                    valor = valor < proximo_valor
+                    valor = "VERDADEIRO" if valor < proximo_valor else "FALSO"
                 elif operador == '==':
-                    valor = valor == proximo_valor
+                    valor = "VERDADEIRO" if valor == proximo_valor else "FALSO"
                 elif operador == '!=':
-                    valor = valor != proximo_valor
+                    valor = "VERDADEIRO" if valor != proximo_valor else "FALSO"
                 elif operador == '>=':
-                    valor = valor >= proximo_valor
+                    valor = "VERDADEIRO" if valor >= proximo_valor else "FALSO"
                 elif operador == '<=':
-                    valor = valor <= proximo_valor
-            except TypeError:  # Trata erros de tipo na comparação
+                    valor = "VERDADEIRO" if valor <= proximo_valor else "FALSO"
+            except TypeError:
                 raise SyntaxError(f"Tipos incompatíveis na comparação '{operador}' na linha {self.token_atual[2]}.")
         return valor
 
 
+
     def expressao_simples(self):
-        valor = self.termo()
-        while self.token_atual[0] == 'ARITMETICOS' and self.token_atual[1] in ('+', '-'): #Verifica operadores + e -
-            operador = self.token_atual[1]
+        # Trata o sinal unário opcional
+        if self.token_atual[0] == 'ARITMETICOS' and self.token_atual[1] in ('+', '-'):
+            sinal = self.token_atual[1]
             self.consumir('ARITMETICOS')
+            valor = self.termo()
+            if sinal == '-':
+                valor = -valor
+        else:
+            valor = self.termo()
+            
+        while (self.token_atual[0] == 'ARITMETICOS' and self.token_atual[1] in ('+', '-')) or \
+            (self.token_atual[0] == 'LOGICOS' and self.token_atual[1] == 'ou'):
+            operador = self.token_atual[1]
+            self.consumir(self.token_atual[0])  # Consome o token correto
             proximo_valor = self.termo()
             try:
                 if operador == '+':
                     valor += proximo_valor
                 elif operador == '-':
                     valor -= proximo_valor
+                elif operador == 'ou':
+                    valor = valor or proximo_valor
             except TypeError:
                 raise SyntaxError(f"Tipos incompatíveis na operação '{operador}' na linha {self.token_atual[2]}.")
         return valor
 
     def termo(self):
         valor = self.fator()
-        while self.token_atual[0] == 'ARITMETICOS' and self.token_atual[1] in ('*', '/'): #Verifica operadores * e /
+        while (self.token_atual[0] == 'ARITMETICOS' and self.token_atual[1] in ('*', '/')) or \
+            (self.token_atual[0] == 'LOGICOS' and self.token_atual[1] == 'e'):
             operador = self.token_atual[1]
-            self.consumir('ARITMETICOS')
+            self.consumir(self.token_atual[0])  # Consome o token correto (ARITMETICOS ou LOGICOS)
             proximo_valor = self.fator()
             try:
                 if operador == '*':
@@ -298,7 +321,9 @@ class AnalisadorSintatico:
                 elif operador == '/':
                     if proximo_valor == 0:
                         raise ZeroDivisionError(f"Divisão por zero na linha {self.token_atual[2]}.")
-                    valor //= proximo_valor #Divisão inteira
+                    valor //= proximo_valor
+                elif operador == 'e':
+                    valor = valor and proximo_valor
             except TypeError:
                 raise SyntaxError(f"Tipos incompatíveis na operação '{operador}' na linha {self.token_atual[2]}.")
             except ZeroDivisionError as zde:

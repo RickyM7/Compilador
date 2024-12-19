@@ -61,7 +61,7 @@ enquanto(c>2){
 	se(c<2){
 		pare;
 	} senao {
-		Ac = c-1;
+		c = c-1;
 		continue;
 	}
 }

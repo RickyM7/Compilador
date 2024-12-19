@@ -77,27 +77,45 @@ class AnalisadorSintatico:
         self.consumir("DELIMITADOR")  # Consome o ponto e vírgula
 
     def declaracao_procedimento(self):
-        self.consumir("RESERVADA")  # Consome 'proc'
-        nome = self.token_atual[1]
-        self.consumir("IDENTIFICADOR")
-        self.consumir("DELIMITADOR")  # Consome '('
-        if self.token_atual[1] in ("int", "boo"):
-            self.parametro()
-            while self.token_atual[1] == ",":
-                self.consumir("DELIMITADOR")
+            self.consumir("RESERVADA")  # Consome 'proc'
+            nome = self.token_atual[1]
+            linha_inicio = self.token_atual[2]  # Guarda a linha onde o procedimento começa
+            self.consumir("IDENTIFICADOR")
+            self.consumir("DELIMITADOR")  # Consome '('
+            
+            # Adiciona o procedimento à tabela de símbolos antes de processar os parâmetros
+            self.tabela_simbolos.adicionar(nome, "proc")
+            
+            if self.token_atual[1] in ("int", "boo"):
                 self.parametro()
-        self.consumir("DELIMITADOR")  # Consome ')'
-        self.consumir("DELIMITADOR")  # Consome '{'
-        while self.token_atual[1] != "}":
-            self.declaracao()
-        self.consumir("DELIMITADOR")  # Consome '}'
-        self.tabela_simbolos.adicionar(nome, "proc")
+                while self.token_atual[1] == ",":
+                    self.consumir("DELIMITADOR")
+                    self.parametro()
+            self.consumir("DELIMITADOR")  # Consome ')'
+            self.consumir("DELIMITADOR")  # Consome '{'
+            
+            self.entrar_escopo("procedimento")
+            bloco_completo = False
+            try:
+                while self.token_atual[0] != "EOF":
+                    if self.token_atual[0] == "DELIMITADOR" and self.token_atual[1] == "}":
+                        bloco_completo = True
+                        break
+                    self.declaracao()
+                    
+                if not bloco_completo:
+                    raise SyntaxError(f"Delimitador '}}' esperado para encerrar o procedimento '{nome}' iniciado na linha {linha_inicio}.")
+                    
+                self.consumir("DELIMITADOR")  # Consome '}'
+            finally:
+                self.sair_escopo()
 
     def declaracao_funcao(self):
         tipo = self.token_atual[1]  # Tipo da função
         self.consumir("RESERVADA")  # Consome tipo
         self.consumir("RESERVADA")  # Consome 'func'
         nome = self.token_atual[1]
+        linha_inicio = self.token_atual[2]  # Guarda a linha onde a função começa
         self.consumir("IDENTIFICADOR")
         self.consumir("DELIMITADOR")  # Consome '('
 
@@ -114,13 +132,21 @@ class AnalisadorSintatico:
         try:
             while self.token_atual[1] != "}":
                 if self.token_atual[0] == "EOF":
-                    raise SyntaxError(f"Delimitador '}}' esperado para encerrar a função '{nome}', mas encontrado EOF.")
-                self.declaracao()
+                    raise SyntaxError(f"Delimitador '}}' esperado para encerrar a função '{nome}' iniciada na linha {linha_inicio}.")
+                if self.token_atual[0] == "RESERVADA" and self.token_atual[1] == "retorne":
+                    self.consumir("RESERVADA")  # Consome 'retorne'
+                    self.expressao()  # Avalia o valor a ser retornado
+                    if self.token_atual[0] != "DELIMITADOR" or self.token_atual[1] != ";":
+                        raise SyntaxError(f"Esperado ';' após 'retorne' na linha {self.token_atual[2]}.")
+                    self.consumir("DELIMITADOR")  # Consome o ponto e vírgula ';'
+                else:
+                    self.declaracao()
         finally:
             self.sair_escopo()
 
         self.consumir("DELIMITADOR")  # Consome '}'
         self.tabela_simbolos.adicionar(nome, tipo, None)
+
 
 
     def parametro(self):
@@ -193,11 +219,17 @@ class AnalisadorSintatico:
                 raise SyntaxError(f"Comando 'leia' espera um identificador na linha {self.token_atual[2]}.")
             else:
                 raise SyntaxError(f"Comando 'escreva' espera um identificador na linha {self.token_atual[2]}.")
+                
         identificador = self.token_atual[1]
         if not self.identificador_declarado(identificador):
             raise SyntaxError(f"Identificador '{identificador}' não declarado na linha {self.token_atual[2]}.")
         self.consumir("IDENTIFICADOR")
         self.consumir("DELIMITADOR")  # Consome ')'
+        
+        # Verifica se há um ponto e vírgula após o comando
+        if self.token_atual[0] != "DELIMITADOR" or self.token_atual[1] != ";":
+            raise SyntaxError(f"Esperado ';' após o comando '{comando}' na linha {self.token_atual[2]}.")
+            
         self.consumir("DELIMITADOR")  # Consome ';'
 
     def comando(self):
@@ -242,6 +274,7 @@ class AnalisadorSintatico:
 
     def tratar_laco(self):
         self.consumir("RESERVADA")  # Consome 'enquanto'
+        linha_inicio = self.token_atual[2]  # Guarda a linha onde a função começa
         self.consumir("DELIMITADOR")  # Consome '('
         self.expressao()  # Avalia a condição do laço
         self.consumir("DELIMITADOR")  # Consome ')'
@@ -252,7 +285,7 @@ class AnalisadorSintatico:
             while self.token_atual[0] != "DELIMITADOR" or self.token_atual[1] != "}":
                 if self.token_atual[0] == "EOF":
                     linha_atual = self.token_atual[2] or "desconhecida"
-                    raise SyntaxError(f"Delimitador '}}' esperado para encerrar o laço, mas encontrado EOF na linha {linha_atual}.")
+                    raise SyntaxError(f"Delimitador '}}' esperado para encerrar o laço iniciado na linha {linha_inicio}.")
                 self.declaracao()  # Processa as declarações dentro do laço
         finally:
             self.sair_escopo()  # Sai do escopo de laço, mesmo em caso de erro

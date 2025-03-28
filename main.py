@@ -1,38 +1,56 @@
 from analisador_lexico import AnalisadorLexico
+from analisador_sintatico import AnalisadorSintatico
 from analisador_semantico import AnalisadorSemantico
+from gerador_cte import GeradorCTE
 from tabela_simbolos import TabelaSimbolos
 
 def main():
-    caminho_arquivo = "codigo_geral.txt"  # Código-fonte
+    # Define o caminho do arquivo de entrada
+    caminho_arquivo = "codigo_geral.txt"
     
-    # Análise Léxica
+    # Executa a análise léxica
     try:
-        analisador_lexico = AnalisadorLexico(caminho_arquivo)  # Inicializa o analisador léxico
-        tokens = analisador_lexico.analisar()  # Gera os tokens a partir do arquivo
-        print("Tokens:")
-        for token in tokens:  # Itera sobre a lista de tokens gerados
-            print(f"{token[0]:<15} {token[1]:<15} {token[2]}")  # Exibe o tipo, valor e linha de cada token
+        analisador_lexico = AnalisadorLexico(caminho_arquivo)
+        tokens = analisador_lexico.analisar()
+        print("Tabela de Tokens:")
+        print("Token           Valor           Linha")
+        print("--------------------------------------------------")
+        for token in tokens:
+            print(f"{token[0]:<15} {token[1]:<15} {token[2]}")
+        print("--------------------------------------------------")
         print("Análise léxica concluída com sucesso!")
     except Exception as e:
         print(f"Erro na análise léxica: {e}")
         return
 
-    # Análise Sintática e Semântica
+    # Executa a análise sintática
     try:
-        tabela_simbolos = TabelaSimbolos()  # Inicializa a tabela de símbolos
-        analisador_semantico = AnalisadorSemantico(tokens, tabela_simbolos)  # Inicializa o analisador semântico com os tokens
-        analisador_semantico.analisar()  # Realiza a análise sintática e semântica combinada
-        print("Análise sintática e semântica concluída com sucesso!")
+        analisador_sintatico = AnalisadorSintatico(tokens)
+        analisador_sintatico.analisar()
+        print("Análise sintática concluída com sucesso!")
     except Exception as e:
-        print(f"Erro na análise sintática/semântica: {e}")
+        print(f"Erro na análise sintática: {e}")
         return
 
-    # Tabela de símbolos e o Código de Três Endereços (CTE)
+    # Executa a análise semântica
     try:
-        tabela_simbolos.exibir()
-        print("Exibição da tabela de símbolos e CTE concluída com sucesso!")
+        tabela_simbolos = TabelaSimbolos()
+        analisador_semantico = AnalisadorSemantico(tokens, tabela_simbolos)
+        estruturas = analisador_semantico.analisar()
+        print("Análise semântica concluída com sucesso!")
     except Exception as e:
-        print(f"Erro na exibição da tabela de símbolos e CTE: {e}")
+        print(f"Erro na análise semântica: {e}")
+        return
+
+    # Gera o código de três endereços (CTE)
+    try:
+        gerador_cte = GeradorCTE(tabela_simbolos)
+        gerador_cte.gerar(estruturas)
+        print("Geração de CTE concluída com sucesso!")
+        print("--------------------------------------------------")
+        tabela_simbolos.exibir()
+    except Exception as e:
+        print(f"Erro na geração de CTE: {e}")
 
 if __name__ == "__main__":
-    main()
+    main()  # Executa o programa principal

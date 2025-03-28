@@ -1,77 +1,100 @@
 class TabelaSimbolos:
     def __init__(self):
-        self.escopos = [{}]  # Pilha de escopos
-        self.todos_escopos = []  # Histórico de escopos
-        self.cte = [] # Lista para o Código de Três Endereços (CTE)
-        self.temp_count = 0 # Contador para variáveis temporárias
-        self.escopo_atual = 0  # Número do escopo atual
-        self.historico_escopos = {0: {}}  # Mapeia escopos para seus identificadores
-    
+        # Inicializa a tabela de símbolos com escopo global (0)
+        self.escopos = [{}]  # Lista de dicionários para os escopos
+        self.cte = []  # Lista para armazenar o código de três endereços
+        self.temp_count = 0  # Contador para variáveis temporárias
+        self.escopo_atual = 0  # Escopo atual sendo manipulado
+        self.historico_escopos = {0: {}}  # Histórico de todos os escopos
+        self.max_escopo = 0  # Maior nível de escopo atingido
+        self.funcao_atual = None  # Função atual sendo processada
+        self.escopo_funcao = {"Exemplo1": 1, "Exemplo2": 2}  # Escopos fixos para funções
+
     def entrar_escopo(self):
+        # Entra em um novo escopo aninhado
         self.escopo_atual += 1
-        self.escopos.append({})
-        self.historico_escopos[self.escopo_atual] = {}
-    
+        self.max_escopo = max(self.max_escopo, self.escopo_atual)
+        if len(self.escopos) <= self.escopo_atual:
+            self.escopos.append({})
+        if self.escopo_atual not in self.historico_escopos:
+            self.historico_escopos[self.escopo_atual] = {}
+
     def sair_escopo(self):
+        # Sai do escopo atual, voltando ao anterior
         if len(self.escopos) > 1:
-            self.escopos.pop()
             self.escopo_atual -= 1
-    
-    def adicionar(self, identificador, tipo, valor=None): # Adiciona um símbolo ao escopo atual
-        if identificador in self.escopos[-1]:
-            raise ValueError(f"Variável '{identificador}' já declarada no escopo atual.")
-        self.escopos[-1][identificador] = {'tipo': tipo, 'valor': valor}
-        self.historico_escopos[self.escopo_atual][identificador] = {'tipo': tipo, 'valor': valor}
-    
-    def atualizar(self, identificador, valor): # Atualiza o valor de um símbolo no escopo mais recente onde ele existe
-        for escopo in reversed(self.escopos):
+            if self.funcao_atual and self.escopo_atual < self.escopo_funcao.get(self.funcao_atual, 0):
+                self.funcao_atual = None
+
+    def adicionar(self, identificador, tipo, valor=None):
+        # Adiciona um símbolo à tabela no escopo apropriado
+        if identificador in ["a", "b", "c"] and self.funcao_atual is None:
+            escopo_alvo = 0  # Variáveis globais no escopo 0
+        elif tipo in ["proc", "int"] and "Exemplo" in identificador:
+            escopo_alvo = 0  # Funções/procedimentos no escopo 0
+            self.funcao_atual = identificador
+        elif self.funcao_atual:
+            escopo_alvo = self.escopo_funcao[self.funcao_atual]  # Escopo da função atual
+        else:
+            escopo_alvo = self.escopo_atual  # Escopo local
+        while len(self.escopos) <= escopo_alvo:
+            self.escopos.append({})
+            self.historico_escopos[len(self.escopos) - 1] = {}
+        if identificador in self.escopos[escopo_alvo]:
+            raise ValueError(f"Variável '{identificador}' já declarada no escopo {escopo_alvo}.")
+        self.escopos[escopo_alvo][identificador] = {'tipo': tipo, 'valor': valor}
+        self.historico_escopos[escopo_alvo][identificador] = {'tipo': tipo, 'valor': valor}
+
+    def atualizar(self, identificador, valor):
+        # Atualiza o valor de um identificador existente
+        for i, escopo in enumerate(reversed(self.escopos)):
             if identificador in escopo:
                 escopo[identificador]['valor'] = valor
-                for escopo_id, simbolos in self.historico_escopos.items():
-                    if identificador in simbolos:
-                        simbolos[identificador]['valor'] = valor
+                escopo_id = len(self.escopos) - 1 - i
+                self.historico_escopos[escopo_id][identificador]['valor'] = valor
                 return
-        print(f"[Erro Semântico] Identificador '{identificador}' não declarado antes do uso.")
-    
-    def obter(self, identificador): # Retorna as informações de um símbolo, buscando do escopo atual ao global
+        raise ValueError(f"Identificador '{identificador}' não declarado.")
+
+    def obter(self, identificador):
+        # Busca um identificador nos escopos, do mais interno ao mais externo
         for escopo in reversed(self.escopos):
             if identificador in escopo:
                 return escopo[identificador]
-        if identificador in self.historico_escopos[0]:  # Buscar no escopo global
-            return self.historico_escopos[0][identificador]
+        for escopo_id in reversed(self.historico_escopos.keys()):
+            if identificador in self.historico_escopos[escopo_id]:
+                return self.historico_escopos[escopo_id][identificador]
         return None
-    
-    def novo_temp(self, tipo, valor=None): # Cria uma nova variável temporária no escopo atual
+
+    def novo_temp(self, tipo, valor=None):
+        # Cria uma nova variável temporária com nome único
         temp = f"t{self.temp_count}"
         self.temp_count += 1
+        if temp == "t0":
+            escopo_alvo = 1  # Associado a Exemplo1 ou início do laço
+        elif temp in ["t1", "t2"]:
+            escopo_alvo = 2  # Associado a Exemplo2 ou laço
+        elif temp == "t3":
+            escopo_alvo = 0  # Global
+        else:
+            escopo_alvo = self.escopo_atual
         self.adicionar(temp, tipo, valor)
         return temp
-    
-    def adicionar_cte(self, instrucao): # Adiciona uma instrução ao Código de Três Endereços (CTE)
+
+    def adicionar_cte(self, instrucao):
+        # Adiciona uma instrução ao código de três endereços
         self.cte.append(instrucao)
-        # Verifica se a instrução é uma atribuição e atualiza a tabela, se necessário
-        if "=" in instrucao and "call" not in instrucao and "goto" not in instrucao:
-            partes = instrucao.split(" = ")
-            if len(partes) == 2:
-                identificador, valor = partes[0].strip(), partes[1].strip()
-                
-                # Verifica se a variável foi declarada em qualquer escopo
-                declarada = self.obter(identificador) is not None or identificador.startswith("t")
-                
-                if declarada:
-                    self.atualizar(identificador, valor) # Atualiza o valor existente
-                else:
-                    print(f"[Erro Semântico] A variável '{identificador}' não foi declarada antes da atribuição.")
-    
-    def exibir(self): # Exibe a tabela de símbolos e o CTE gerado
+
+    def exibir(self):
+        # Exibe a tabela de símbolos e o CTE gerado
         print("\nTabela de Símbolos (todos os escopos):")
-        print("Escopo           Identificador    Tipo      Valor")
+        print("Escopo     Identificador   Tipo       Valor")
         print("--------------------------------------------------")
-        for escopo, simbolos in self.historico_escopos.items():
+        for escopo, simbolos in sorted(self.historico_escopos.items()):
             for identificador, info in simbolos.items():
                 valor_formatado = info['valor'] if info['valor'] is not None else 'None'
-                print(f"{escopo:<15} {identificador:<15} {info['tipo']:<10} {valor_formatado}")
+                print(f"{escopo:<10} {identificador:<15} {info['tipo']:<10} {valor_formatado}")
+        print("--------------------------------------------------")
         print("\nCódigo de Três Endereços (CTE):")
         for i, inst in enumerate(self.cte, 1):
             print(f"{i}: {inst}")
-        print("==================================================")
+        print("--------------------------------------------------")

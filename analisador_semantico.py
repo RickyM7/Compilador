@@ -54,7 +54,7 @@ class AnalisadorSemantico:
         nome = self.token_atual[1]
         self.consumir("IDENTIFICADOR")
         self.consumir("DELIMITADOR")  # "("
-        self.tabela_simbolos.adicionar(nome, "proc")
+        self.tabela_simbolos.adicionar(nome, "proc", parametros=[])  # Inicializa com lista vazia
         self.tabela_simbolos.entrar_escopo()
         params = []
         if self.token_atual[1] in ("int", "boo"):
@@ -73,6 +73,9 @@ class AnalisadorSemantico:
         finally:
             self.tabela_simbolos.sair_escopo()
         self.consumir("DELIMITADOR")  # "}"
+        # Atualiza a tabela com os parâmetros coletados após a declaração
+        self.tabela_simbolos.escopos[0][nome]['parametros'] = params
+        self.tabela_simbolos.historico_escopos[0][nome]['parametros'] = params
         return ("proc", nome, params, corpo)
 
     def declaracao_funcao(self):
@@ -154,6 +157,12 @@ class AnalisadorSemantico:
 
     def chamada(self, nome):
         # Processa uma chamada de função ou procedimento
+        simbolo = self.tabela_simbolos.obter(nome) # Verifica se o procedimento/função existe na tabela de símbolos
+        if not simbolo:
+            raise ValueError(f"Procedimento ou função '{nome}' não declarado na linha {self.token_atual[2]}.")
+        if simbolo['tipo'] not in ["proc", "int", "boo"]:
+            raise ValueError(f"'{nome}' não é um procedimento ou função na linha {self.token_atual[2]}.")
+
         self.consumir("DELIMITADOR")  # "("
         args = []
         if self.token_atual[1] != ")":
@@ -162,6 +171,23 @@ class AnalisadorSemantico:
                 self.consumir("DELIMITADOR")
                 args.append(self.expressao())
         self.consumir("DELIMITADOR")  # ")"
+
+        # Obtém os parâmetros declarados e valida a chamada
+        if 'parametros' not in simbolo:
+            raise ValueError(f"Assinatura de '{nome}' não encontrada na tabela de símbolos.")
+        params = simbolo['parametros']
+
+        # Verifica o número de argumentos
+        if len(args) != len(params):
+            raise ValueError(f"Número incorreto de argumentos para '{nome}' na linha {self.token_atual[2]}: esperados {len(params)}, fornecidos {len(args)}.")
+
+        # Verifica os tipos dos argumentos contra os parâmetros
+        for i, (arg, param) in enumerate(zip(args, params)):
+            tipo_arg = self.obter_tipo(arg)
+            tipo_param = param[0]  # param é uma tupla (tipo, identificador)
+            if tipo_arg != tipo_param:
+                raise ValueError(f"Tipo incompatível para o argumento {i+1} de '{nome}' na linha {self.token_atual[2]}: esperado '{tipo_param}', encontrado '{tipo_arg}'.")
+
         return (nome, args)
 
     def comando(self):
@@ -241,6 +267,14 @@ class AnalisadorSemantico:
             op = self.token_atual[1]
             self.consumir("RELACIONAIS")
             valor_dir = self.expressao_simples()
+            
+            # Verifica os tipos dos operandos antes de realizar a operação relacional
+            tipo_esq = self.obter_tipo(valor)
+            tipo_dir = self.obter_tipo(valor_dir)
+            if tipo_esq != tipo_dir:
+                raise ValueError(f"Tipos incompatíveis '{tipo_esq}' e '{tipo_dir}' na operação '{op}' na linha {self.token_atual[2]}.")
+            
+            # Gera uma temporária booleana para o resultado
             temp = self.tabela_simbolos.novo_temp("boo")
             self.tabela_simbolos.atualizar(temp, f"{valor} {op} {valor_dir}")
             valor = temp
@@ -255,6 +289,10 @@ class AnalisadorSemantico:
             self.consumir("ARITMETICOS")
             valor = self.termo()
             if sinal == "-":
+                # Verifica se o operando do operador unário é do tipo int
+                tipo_valor = self.obter_tipo(valor)
+                if tipo_valor != "int":
+                    raise ValueError(f"Operador unário '{sinal}' exige tipo 'int', encontrado '{tipo_valor}' na linha {self.token_atual[2]}.")
                 temp = self.tabela_simbolos.novo_temp("int")
                 self.tabela_simbolos.atualizar(temp, f"-{valor}")
                 valor = temp
@@ -265,10 +303,34 @@ class AnalisadorSemantico:
             op = self.token_atual[1]
             self.consumir(self.token_atual[0])
             valor_dir = self.termo()
-            temp = self.tabela_simbolos.novo_temp("int" if op in ("+", "-") else "boo")
+            
+            # Verifica tipos para operadores aritméticos e lógicos
+            tipo_esq = self.obter_tipo(valor)
+            tipo_dir = self.obter_tipo(valor_dir)
+            if op in ("+", "-"):
+                if tipo_esq != "int" or tipo_dir != "int":
+                    raise ValueError(f"Operador '{op}' exige operandos do tipo 'int', encontrados '{tipo_esq}' e '{tipo_dir}' na linha {self.token_atual[2]}.")
+                temp = self.tabela_simbolos.novo_temp("int")
+            elif op == "ou":
+                if tipo_esq != "boo" or tipo_dir != "boo":
+                    raise ValueError(f"Operador '{op}' exige operandos do tipo 'boo', encontrados '{tipo_esq}' e '{tipo_dir}' na linha {self.token_atual[2]}.")
+                temp = self.tabela_simbolos.novo_temp("boo")
             self.tabela_simbolos.atualizar(temp, f"{valor} {op} {valor_dir}")
             valor = temp
         return valor
+
+    def obter_tipo(self, valor):
+        # Método auxiliar para determinar o tipo de um valor
+        if valor in ["VERDADEIRO", "FALSO"]:
+            return "boo"
+        elif isinstance(valor, str) and valor.isdigit():
+            return "int"
+        elif isinstance(valor, str) and valor.isidentifier():
+            simbolo = self.tabela_simbolos.obter(valor)
+            if simbolo:
+                return simbolo['tipo']
+            raise ValueError(f"Identificador '{valor}' não declarado na linha {self.token_atual[2]}.")
+        return None
 
     def termo(self):
         # Processa um termo com operadores de multiplicação ou lógico "e"

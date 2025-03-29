@@ -8,7 +8,7 @@ class TabelaSimbolos:
         self.historico_escopos = {0: {}}  # Histórico de todos os escopos
         self.max_escopo = 0  # Maior nível de escopo atingido
         self.funcao_atual = None  # Função atual sendo processada
-        self.escopo_funcao = {"Exemplo1": 1, "Exemplo2": 2}  # Escopos fixos para funções
+        self.escopo_funcao = {}  # Dicionário dinâmico para escopos de funções
 
     def entrar_escopo(self):
         # Entra em um novo escopo aninhado
@@ -28,20 +28,24 @@ class TabelaSimbolos:
 
     def adicionar(self, identificador, tipo, valor=None, parametros=None):
         # Adiciona um símbolo à tabela no escopo apropriado
-        if identificador in ["a", "b", "c"] and self.funcao_atual is None:
-            escopo_alvo = 0  # Variáveis globais no escopo 0
-        elif tipo in ["proc", "int"] and "Exemplo" in identificador:
-            escopo_alvo = 0  # Funções/procedimentos no escopo 0
-            self.funcao_atual = identificador
-        elif self.funcao_atual:
-            escopo_alvo = self.escopo_funcao[self.funcao_atual]  # Escopo da função atual
-        else:
-            escopo_alvo = self.escopo_atual  # Escopo local
+        if tipo == "proc" or (tipo in ["int", "boo"] and parametros is not None):  # Declaração de função/procedimento
+            escopo_alvo = 0  # Sempre no escopo global
+            if identificador not in self.escopos[escopo_alvo]:  # Verifica se a função/procedimento já não foi declarado
+                self.funcao_atual = identificador
+                if identificador not in self.escopo_funcao:
+                    self.escopo_funcao[identificador] = self.max_escopo + 1  # Associa novo escopo dinamicamente
+        elif self.funcao_atual:  # Dentro de uma função/procedimento
+            escopo_alvo = self.escopo_funcao.get(self.funcao_atual, self.escopo_atual)  # Usa o escopo da função atual
+        else:  # Variáveis fora de funções (escopo atual)
+            escopo_alvo = self.escopo_atual
+
         while len(self.escopos) <= escopo_alvo:
             self.escopos.append({})
             self.historico_escopos[len(self.escopos) - 1] = {}
+        
+        # Verifica se o identificador já existe no escopo alvo e ignora silenciosamente duplicatas
         if identificador in self.escopos[escopo_alvo]:
-            raise ValueError(f"Variável '{identificador}' já declarada no escopo {escopo_alvo}.")
+            return  # Retorna para evitar duplicação
         
         # Armazena parâmetros se fornecidos (para procedimentos e funções)
         self.escopos[escopo_alvo][identificador] = {
@@ -79,15 +83,7 @@ class TabelaSimbolos:
         # Cria uma nova variável temporária com nome único
         temp = f"t{self.temp_count}"
         self.temp_count += 1
-        if temp == "t0":
-            escopo_alvo = 1  # Associado a Exemplo1 ou início do laço
-        elif temp in ["t1", "t2"]:
-            escopo_alvo = 2  # Associado a Exemplo2 ou laço
-        elif temp == "t3":
-            escopo_alvo = 0  # Global
-        else:
-            escopo_alvo = self.escopo_atual
-        self.adicionar(temp, tipo, valor)
+        self.adicionar(temp, tipo, valor)  # Adiciona a temporária ao escopo atual
         return temp
 
     def adicionar_cte(self, instrucao):

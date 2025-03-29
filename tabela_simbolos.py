@@ -26,7 +26,7 @@ class TabelaSimbolos:
             if self.funcao_atual and self.escopo_atual < self.escopo_funcao.get(self.funcao_atual, 0):
                 self.funcao_atual = None
 
-    def adicionar(self, identificador, tipo, valor=None):
+    def adicionar(self, identificador, tipo, valor=None, parametros=None):
         # Adiciona um símbolo à tabela no escopo apropriado
         if identificador in ["a", "b", "c"] and self.funcao_atual is None:
             escopo_alvo = 0  # Variáveis globais no escopo 0
@@ -42,8 +42,18 @@ class TabelaSimbolos:
             self.historico_escopos[len(self.escopos) - 1] = {}
         if identificador in self.escopos[escopo_alvo]:
             raise ValueError(f"Variável '{identificador}' já declarada no escopo {escopo_alvo}.")
-        self.escopos[escopo_alvo][identificador] = {'tipo': tipo, 'valor': valor}
-        self.historico_escopos[escopo_alvo][identificador] = {'tipo': tipo, 'valor': valor}
+        
+        # Armazena parâmetros se fornecidos (para procedimentos e funções)
+        self.escopos[escopo_alvo][identificador] = {
+            'tipo': tipo,
+            'valor': valor,
+            'parametros': parametros if parametros is not None else []  # Adiciona campo para parâmetros
+        }
+        self.historico_escopos[escopo_alvo][identificador] = {
+            'tipo': tipo,
+            'valor': valor,
+            'parametros': parametros if parametros is not None else []  # Replica no histórico
+        }
 
     def atualizar(self, identificador, valor):
         # Atualiza o valor de um identificador existente

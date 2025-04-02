@@ -55,30 +55,30 @@ O projeto é composto pelos seguintes arquivos:
    - Escreva o código conforme a gramática da linguagem. Exemplo:
      ```
      int a = 1;
-	boo b = VERDADEIRO;
-
-	proc Exemplo1(int a, boo b) {
+     boo b = VERDADEIRO;
+     
+     proc Exemplo1(int a, boo b) {
 	    escreva(a);
-	}
+     }
 
-	int func Exemplo2(int a) {
+     int func Exemplo2(int a) {
 	    int valor;
 	    valor = a;
 	    retorne valor;
-	}
+     }
 
-	int c = Exemplo2(4);
+     int c = Exemplo2(4);
 
-	enquanto (c > 2) {
-	    se (c < 2) {
-	        pare;
-	    } senao {
-	        c = c - 1;
+     enquanto (c > 2) {
+     	se (c < 2) {
+     		pare;
+     	} senao {
+     		c = c - 1;
 	        continue;
-	    }
-	}
+     	}
+     }
 
-	c = c + 2;
+     c = c + 2;
      ```
 
 2. **Executar o Projeto**:

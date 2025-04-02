@@ -11,9 +11,7 @@ int func Exemplo2(int a) {
     retorne valor;
 }
 
-Exemplo1(3, VERDADEIRO);
-
-int c = 4;
+int c = Exemplo2(4);
 
 enquanto (c > 2) {
     se (c < 2) {

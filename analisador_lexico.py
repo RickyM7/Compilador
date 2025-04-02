@@ -10,6 +10,7 @@ class AnalisadorLexico:
             return f.readlines()
 
     def analisar(self):
+        # Analisa cada linha do arquivo e gera tokens
         delimitadores = [";", "{", "}", "(", ")", ",", "+", "-", "*", "/"]
         operadores_compostos = ["==", "!=", ">=", "<="]  # Operadores de comparação de dois caracteres
         operadores_relacionais = [">", "<"]

@@ -13,6 +13,7 @@ class AnalisadorLexico:
         # Analisa cada linha do arquivo e gera tokens
         delimitadores = [";", "{", "}", "(", ")", ",", "+", "-", "*", "/"]
         operadores_compostos = ["==", "!=", ">=", "<="]  # Operadores de comparação de dois caracteres
+        operadores_relacionais = [">", "<"]
         for numero_linha, linha in enumerate(self.linhas, start=1):
             palavra = ""  # Armazena caracteres até formar um token
             i = 0
@@ -26,7 +27,7 @@ class AnalisadorLexico:
                     self.classificar_token(linha[i:i + 2], numero_linha)
                     i += 1  # Pula o próximo caractere do operador composto
                 # Processa delimitadores ou operador de atribuição
-                elif char in delimitadores or char == "=":
+                elif char in delimitadores or char == "=" or char in operadores_relacionais:
                     if palavra:
                         self.classificar_token(palavra.strip(), numero_linha)
                         palavra = ""

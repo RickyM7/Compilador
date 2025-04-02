@@ -26,6 +26,10 @@ class GeradorCTE:
             # Declaração de variável com ou sem inicialização
             _, identificador, valor = estrutura
             if valor:
+                simbolo = self.tabela_simbolos.obter(valor)
+                if simbolo and simbolo['valor'] and valor not in self.temp_geradas:
+                    self.tabela_simbolos.adicionar_cte(f"{valor} = {simbolo['valor']}")
+                    self.temp_geradas.add(valor)
                 self.tabela_simbolos.adicionar_cte(f"{identificador} = {valor}")
             else:
                 self.tabela_simbolos.adicionar_cte(f"decl {identificador} {tipo}")
@@ -65,9 +69,15 @@ class GeradorCTE:
             self.tabela_simbolos.adicionar_cte(f"{identificador} = {valor}")
         elif tipo == "chamada":
             # Chamada de função ou procedimento
-            _, nome, (nome_chamada, args) = estrutura
-            args_str = ", ".join(str(arg) for arg in args)
-            self.tabela_simbolos.adicionar_cte(f"call {nome_chamada}({args_str})")
+            _, nome, resultado = estrutura
+            if resultado:
+                if nome == resultado.split('(')[0]:  # Procedimento
+                    self.tabela_simbolos.adicionar_cte(f"call {resultado}")
+                else:  # Função
+                    simbolo = self.tabela_simbolos.obter(resultado)
+                    if simbolo and simbolo['valor'] and resultado not in self.temp_geradas:
+                        self.tabela_simbolos.adicionar_cte(f"{resultado} = {simbolo['valor']}")
+                        self.temp_geradas.add(resultado)
         elif tipo == "se":
             self.gerar_condicional(estrutura)
         elif tipo == "enquanto":

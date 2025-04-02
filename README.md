@@ -58,13 +58,13 @@ O projeto é composto pelos seguintes arquivos:
      boo b = VERDADEIRO;
      
      proc Exemplo1(int a, boo b) {
-	    escreva(a);
+     	escreva(a);
      }
 
      int func Exemplo2(int a) {
-	    int valor;
-	    valor = a;
-	    retorne valor;
+     	int valor;
+     	valor = a;
+     	retorne valor;
      }
 
      int c = Exemplo2(4);
@@ -74,7 +74,7 @@ O projeto é composto pelos seguintes arquivos:
      		pare;
      	} senao {
      		c = c - 1;
-	        continue;
+     		continue;
      	}
      }
 

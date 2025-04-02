@@ -86,7 +86,7 @@ class AnalisadorSemantico:
         nome = self.token_atual[1]
         self.consumir("IDENTIFICADOR")
         self.consumir("DELIMITADOR")  # "("
-        self.tabela_simbolos.adicionar(nome, tipo_retorno)
+        self.tabela_simbolos.adicionar(nome, tipo_retorno, parametros=[])  # Inicializa com lista vazia
         self.tabela_simbolos.entrar_escopo()
         params = []
         if self.token_atual[1] in ("int", "boo"):
@@ -97,6 +97,9 @@ class AnalisadorSemantico:
                 param = self.parametro()
                 params.append(param)
         self.consumir("DELIMITADOR")  # ")"
+        # Atualiza a tabela com os parâmetros coletados
+        self.tabela_simbolos.escopos[0][nome]['parametros'] = params
+        self.tabela_simbolos.historico_escopos[0][nome]['parametros'] = params
         self.consumir("DELIMITADOR")  # "{"
         corpo = []
         try:
@@ -132,7 +135,15 @@ class AnalisadorSemantico:
         self.tabela_simbolos.adicionar(identificador, tipo, None)
         if self.token_atual[0] == "ATRIBUICAO":
             self.consumir("ATRIBUICAO")
+            # Verifica se é uma chamada de procedimento
+            if self.token_atual[0] == "IDENTIFICADOR" and self.pos < len(self.tokens) and self.tokens[self.pos][1] == "(":
+                nome_chamada = self.token_atual[1]
+                simbolo = self.tabela_simbolos.obter(nome_chamada)
+                if simbolo and simbolo['tipo'] == "proc":
+                    raise ValueError(f"Procedimento '{nome_chamada}' não retorna valor e não pode ser usado em uma atribuição na linha {self.token_atual[2]}.")
             valor = self.expressao(tipo)
+            if not self.verificar_tipos(valor, tipo):
+                raise ValueError(f"Tipo '{tipo}' esperado, mas tipo incompatível encontrado na linha {self.token_atual[2]}.")
             self.tabela_simbolos.atualizar(identificador, valor)
         self.consumir("DELIMITADOR")
         return (tipo, identificador, valor)
@@ -146,7 +157,7 @@ class AnalisadorSemantico:
         self.consumir("IDENTIFICADOR")
         if self.token_atual[0] == "DELIMITADOR" and self.token_atual[1] == "(":
             resultado = self.chamada(identificador)
-            self.consumir("DELIMITADOR")
+            self.consumir("DELIMITADOR")  # ";"
             return ("chamada", identificador, resultado)
         elif self.token_atual[0] == "ATRIBUICAO":
             self.consumir("ATRIBUICAO")
@@ -157,11 +168,13 @@ class AnalisadorSemantico:
 
     def chamada(self, nome):
         # Processa uma chamada de função ou procedimento
-        simbolo = self.tabela_simbolos.obter(nome) # Verifica se o procedimento/função existe na tabela de símbolos
+        simbolo = self.tabela_simbolos.obter(nome)
         if not simbolo:
-            raise ValueError(f"Procedimento ou função '{nome}' não declarado na linha {self.token_atual[2]}.")
-        if simbolo['tipo'] not in ["proc", "int", "boo"]:
-            raise ValueError(f"'{nome}' não é um procedimento ou função na linha {self.token_atual[2]}.")
+            raise ValueError(f"Identificador '{nome}' não declarado na linha {self.token_atual[2]}.")
+        # Verifica se é uma função ou procedimento: deve ter 'parametros' não vazio ou ser 'proc'
+        if 'parametros' not in simbolo or not simbolo['parametros']:
+            if simbolo['tipo'] != "proc":  # Procedimentos podem não ter parâmetros
+                raise ValueError(f"'{nome}' não é uma função ou procedimento na linha {self.token_atual[2]}.")
 
         self.consumir("DELIMITADOR")  # "("
         args = []
@@ -172,23 +185,23 @@ class AnalisadorSemantico:
                 args.append(self.expressao())
         self.consumir("DELIMITADOR")  # ")"
 
-        # Obtém os parâmetros declarados e valida a chamada
-        if 'parametros' not in simbolo:
-            raise ValueError(f"Assinatura de '{nome}' não encontrada na tabela de símbolos.")
-        params = simbolo['parametros']
-
-        # Verifica o número de argumentos
+        params = simbolo.get('parametros', [])
         if len(args) != len(params):
             raise ValueError(f"Número incorreto de argumentos para '{nome}' na linha {self.token_atual[2]}: esperados {len(params)}, fornecidos {len(args)}.")
 
-        # Verifica os tipos dos argumentos contra os parâmetros
         for i, (arg, param) in enumerate(zip(args, params)):
             tipo_arg = self.obter_tipo(arg)
-            tipo_param = param[0]  # param é uma tupla (tipo, identificador)
+            tipo_param = param[0]
             if tipo_arg != tipo_param:
                 raise ValueError(f"Tipo incompatível para o argumento {i+1} de '{nome}' na linha {self.token_atual[2]}: esperado '{tipo_param}', encontrado '{tipo_arg}'.")
 
-        return (nome, args)
+        tipo_retorno = simbolo['tipo'] if simbolo['tipo'] != "proc" else None
+        if tipo_retorno:
+            temp = self.tabela_simbolos.novo_temp(tipo_retorno)
+            self.tabela_simbolos.atualizar(temp, f"{nome}({', '.join(str(arg) for arg in args)})")
+            return temp
+        # Para procedimentos, retorna a string da chamada com argumentos
+        return f"{nome}({', '.join(str(arg) for arg in args)})"
 
     def comando(self):
         # Identifica e processa comandos da linguagem
@@ -355,6 +368,9 @@ class AnalisadorSemantico:
             self.consumir("IDENTIFICADOR")
             if self.token_atual[0] == "DELIMITADOR" and self.token_atual[1] == "(":
                 return self.chamada(identificador)
+            # Verifica se é uma função ou procedimento com parâmetros ou tipo "proc"
+            if ('parametros' in simbolo and simbolo['parametros']) or simbolo['tipo'] == "proc":
+                raise ValueError(f"'{identificador}' é uma função ou procedimento e deve ser chamado com argumentos na linha {self.token_atual[2]}.")
             return identificador
         elif self.token_atual[0] in ("BOOLEANO", "INTEIRO"):
             valor = self.token_atual[1]

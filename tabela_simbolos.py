@@ -43,9 +43,9 @@ class TabelaSimbolos:
             self.escopos.append({})
             self.historico_escopos[len(self.escopos) - 1] = {}
         
-        # Verifica se o identificador já existe no escopo alvo e ignora silenciosamente duplicatas
+        # Verifica se o identificador já existe no escopo alvo
         if identificador in self.escopos[escopo_alvo]:
-            return  # Retorna para evitar duplicação
+            raise ValueError(f"Identificador '{identificador}' já foi declarado neste escopo.")
         
         # Armazena parâmetros se fornecidos (para procedimentos e funções)
         self.escopos[escopo_alvo][identificador] = {

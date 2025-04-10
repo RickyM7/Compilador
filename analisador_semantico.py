@@ -251,17 +251,19 @@ class AnalisadorSemantico:
         # Processa uma estrutura de laço (enquanto)
         self.consumir("RESERVADA")  # "enquanto"
         self.consumir("DELIMITADOR")  # "("
-        self.tabela_simbolos.entrar_escopo()
-        self.dentro_laco = True  # Ativa a flag ao entrar no laço
+        self.tabela_simbolos.entrar_escopo()  # Novo escopo para a condição do laço
+        self.dentro_laco = True
         condicao = self.expressao("boo")
         self.consumir("DELIMITADOR")  # ")"
         self.consumir("DELIMITADOR")  # "{"
+        self.tabela_simbolos.entrar_escopo()  # Novo escopo para o corpo do laço
         corpo = []
         while self.token_atual[1] != "}":
             corpo.append(self.declaracao())
         self.consumir("DELIMITADOR")  # "}"
-        self.dentro_laco = False  # Desativa a flag ao sair do laço
-        self.tabela_simbolos.sair_escopo()
+        self.dentro_laco = False
+        self.tabela_simbolos.sair_escopo()  # Sai do escopo do corpo
+        self.tabela_simbolos.sair_escopo()  # Sai do escopo da condição
         return ("enquanto", condicao, corpo)
 
     def comandos_simples(self):
@@ -294,7 +296,7 @@ class AnalisadorSemantico:
             
             # Gera uma temporária booleana para o resultado
             temp = self.tabela_simbolos.novo_temp("boo")
-            self.tabela_simbolos.atualizar(temp, f"{valor} {op} {valor_dir}")
+            self.tabela_simbolos.atualizar(temp, f"{valor} {op} {valor_dir}")  # Armazena a expressão legível
             valor = temp
         if tipo_esperado and not self.verificar_tipos(valor, tipo_esperado):
             raise ValueError(f"Tipo '{tipo_esperado}' esperado, mas tipo incompatível encontrado na linha {self.token_atual[2]}.")

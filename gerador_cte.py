@@ -25,18 +25,32 @@ class GeradorCTE:
         if tipo in ("int", "boo"):
             # Declaração de variável com ou sem inicialização
             _, identificador, valor = estrutura
-            if valor:
+            if valor and isinstance(valor, str):
                 simbolo = self.tabela_simbolos.obter(valor)
-                if simbolo and simbolo['valor'] and valor not in self.temp_geradas:
-                    self.tabela_simbolos.adicionar_cte(f"{valor} = {simbolo['valor']}")
-                    self.temp_geradas.add(valor)
-                self.tabela_simbolos.adicionar_cte(f"{identificador} = {valor}")
-            else:
-                self.tabela_simbolos.adicionar_cte(f"decl {identificador} {tipo}")
+                if simbolo and simbolo.get('valor') and '(' in str(simbolo.get('valor')):
+                    chamada = simbolo['valor']
+                    nome_funcao = chamada.split("(")[0]
+                    args = [arg.strip() for arg in chamada.split("(")[1].rstrip(")").split(",") if arg.strip()]
+                    for arg in args:
+                        self.tabela_simbolos.adicionar_cte(f"param {arg}")
+                    self.tabela_simbolos.adicionar_cte(f"{valor} := call {nome_funcao}, {len(args)}")
+                    self.tabela_simbolos.adicionar_cte(f"{identificador} := {valor}")
+                else:
+                    self.gerar_valor(valor)
+                    self.tabela_simbolos.adicionar_cte(f"{identificador} := {valor}")
         elif tipo == "proc":
             # Declaração de procedimento
             _, nome, params, corpo = estrutura
-            self.tabela_simbolos.adicionar_cte(f"proc {nome}:")
+            self.tabela_simbolos.adicionar_cte(f"proc {nome}")
+            for param in params:
+                self.tabela_simbolos.adicionar_cte(f"param {param[1]} {param[0]}")
+            for decl in corpo:
+                self.gerar_estrutura(decl)
+            self.tabela_simbolos.adicionar_cte("endproc")
+        elif tipo == "func":
+            # Declaração de função
+            _, nome, tipo_retorno, params, corpo = estrutura
+            self.tabela_simbolos.adicionar_cte(f"func {nome}")
             for param in params:
                 self.tabela_simbolos.adicionar_cte(f"param {param[1]} {param[0]}")
             for decl in corpo:
@@ -44,40 +58,12 @@ class GeradorCTE:
                     self.tabela_simbolos.adicionar_cte(f"decl {decl[1]} {decl[0]}")
                 else:
                     self.gerar_estrutura(decl)
-        elif tipo == "func":
-            # Declaração de função
-            _, nome, tipo_retorno, params, corpo = estrutura
-            self.tabela_simbolos.adicionar_cte(f"func {nome}:")
-            for param in params:
-                self.tabela_simbolos.adicionar_cte(f"param {param[1]} {param[0]}")
-            for decl in corpo:
-                if decl[0] in ("int", "boo") and decl[2] is None:
-                    self.tabela_simbolos.adicionar_cte(f"decl {decl[1]} {decl[0]}")
-                elif decl[0] == "atribuicao":
-                    _, identificador, valor = decl
-                    self.tabela_simbolos.adicionar_cte(f"{identificador} = {valor}")
-                elif decl[0] == "retorne":
-                    _, valor = decl
-                    self.tabela_simbolos.adicionar_cte(f"return {valor}")
+            self.tabela_simbolos.adicionar_cte("endfunc")
         elif tipo == "atribuicao":
             # Atribuição de valor a uma variável
             _, identificador, valor = estrutura
-            simbolo = self.tabela_simbolos.obter(valor)
-            if simbolo and simbolo['valor'] and valor not in self.temp_geradas:
-                self.tabela_simbolos.adicionar_cte(f"{valor} = {simbolo['valor']}")
-                self.temp_geradas.add(valor)
-            self.tabela_simbolos.adicionar_cte(f"{identificador} = {valor}")
-        elif tipo == "chamada":
-            # Chamada de função ou procedimento
-            _, nome, resultado = estrutura
-            if resultado:
-                if nome == resultado.split('(')[0]:  # Procedimento
-                    self.tabela_simbolos.adicionar_cte(f"call {resultado}")
-                else:  # Função
-                    simbolo = self.tabela_simbolos.obter(resultado)
-                    if simbolo and simbolo['valor'] and resultado not in self.temp_geradas:
-                        self.tabela_simbolos.adicionar_cte(f"{resultado} = {simbolo['valor']}")
-                        self.temp_geradas.add(resultado)
+            self.gerar_valor(valor)
+            self.tabela_simbolos.adicionar_cte(f"{identificador} := {valor}")
         elif tipo == "se":
             self.gerar_condicional(estrutura)
         elif tipo == "enquanto":
@@ -85,45 +71,43 @@ class GeradorCTE:
         elif tipo == "retorne":
             # Comando de retorno
             _, valor = estrutura
+            self.gerar_valor(valor)
             self.tabela_simbolos.adicionar_cte(f"return {valor}")
-        elif tipo in ("continue", "pare"):
-            # Comandos de controle de fluxo
-            self.tabela_simbolos.adicionar_cte(tipo)
-        elif tipo in ("leia", "escreva"):
+        elif tipo == "pare":
+            self.tabela_simbolos.adicionar_cte(f"goto {self.label_fim_laco}")
+        elif tipo == "continue":
+            self.tabela_simbolos.adicionar_cte(f"goto {self.label_inicio_laco}")
+        elif tipo == "escreva":
             # Comandos de entrada/saída
             _, identificador = estrutura
-            self.tabela_simbolos.adicionar_cte(f"{tipo} {identificador}")
+            self.tabela_simbolos.adicionar_cte(f"escreva {identificador}")
+
+    def gerar_valor(self, valor):
+        simbolo = self.tabela_simbolos.obter(valor)
+        if simbolo and simbolo['valor'] and valor not in self.temp_geradas:
+            if isinstance(simbolo['valor'], str) and any(op in simbolo['valor'] for op in ['+', '-', '*', '/', '>', '<', '>=', '<=', '==', '!=']):
+                self.tabela_simbolos.adicionar_cte(f"{valor} := {simbolo['valor']}")
+                self.temp_geradas.add(valor)
 
     def gerar_condicional(self, estrutura):
         # Gera CTE para uma estrutura condicional (se/senão)
         _, condicao, bloco_se, bloco_senao = estrutura
-        simbolo = self.tabela_simbolos.obter(condicao)
-        if simbolo and simbolo['valor'] and condicao not in self.temp_geradas:
-            self.tabela_simbolos.adicionar_cte(f"{condicao} = {simbolo['valor']}")
-            self.temp_geradas.add(condicao)
-        label_else = self.novo_label()
-        label_end = self.novo_label()
-        self.tabela_simbolos.adicionar_cte(f"if {condicao} == FALSO goto {label_else}")
-        for decl in bloco_se:
-            self.gerar_estrutura(decl)
-        self.tabela_simbolos.adicionar_cte(f"goto {label_end}")
-        self.tabela_simbolos.adicionar_cte(f"{label_else}:")
+        self.gerar_valor(condicao)
+        self.tabela_simbolos.adicionar_cte(f"if {condicao} == 1 goto {self.label_fim_laco}")
         for decl in bloco_senao:
             self.gerar_estrutura(decl)
-        self.tabela_simbolos.adicionar_cte(f"{label_end}:")
 
     def gerar_laco(self, estrutura):
         # Gera CTE para uma estrutura de laço (enquanto)
         _, condicao, corpo = estrutura
-        label_start = self.novo_label()
-        label_end = self.novo_label()
-        self.tabela_simbolos.adicionar_cte(f"{label_start}:")
-        simbolo = self.tabela_simbolos.obter(condicao)
-        if simbolo and simbolo['valor'] and condicao not in self.temp_geradas:
-            self.tabela_simbolos.adicionar_cte(f"{condicao} = {simbolo['valor']}")
-            self.temp_geradas.add(condicao)
-        self.tabela_simbolos.adicionar_cte(f"if {condicao} == FALSO goto {label_end}")
+        self.label_inicio_laco = self.novo_label()
+        self.label_fim_laco = self.novo_label()
+        self.tabela_simbolos.adicionar_cte(f"{self.label_inicio_laco}:")
+        self.gerar_valor(condicao)
+        self.tabela_simbolos.adicionar_cte(f"if {condicao} == 0 goto {self.label_fim_laco}")
         for decl in corpo:
             self.gerar_estrutura(decl)
-        self.tabela_simbolos.adicionar_cte(f"goto {label_start}")
-        self.tabela_simbolos.adicionar_cte(f"{label_end}:")
+        if not (corpo and isinstance(corpo[-1], tuple) and corpo[-1][0] == "se" and 
+                corpo[-1][3] and isinstance(corpo[-1][3][-1], tuple) and corpo[-1][3][-1][0] == "continue"):
+            self.tabela_simbolos.adicionar_cte(f"goto {self.label_inicio_laco}")
+        self.tabela_simbolos.adicionar_cte(f"{self.label_fim_laco}:")

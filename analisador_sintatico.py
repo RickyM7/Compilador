@@ -4,6 +4,7 @@ class AnalisadorSintatico:
         self.tokens = tokens
         self.pos = 0
         self.token_atual = None
+        self.dentro_laco = False
         self.avancar()
 
     def avancar(self):
@@ -131,6 +132,8 @@ class AnalisadorSintatico:
             self.expressao()
             self.consumir("DELIMITADOR")
         elif self.token_atual[1] in ["continue", "pare"]:
+            if not self.dentro_laco:  # Verifica se está dentro de um laço
+                raise SyntaxError(f"Comando '{self.token_atual[1]}' fora de um laço na linha {self.token_atual[2]}.")
             self.consumir("RESERVADA")
             self.consumir("DELIMITADOR")
         elif self.token_atual[1] in ["leia", "escreva"]:
@@ -160,9 +163,11 @@ class AnalisadorSintatico:
         self.expressao()
         self.consumir("DELIMITADOR")  # ")"
         self.consumir("DELIMITADOR")  # "{"
+        self.dentro_laco = True  # Ativa a flag ao entrar no laço
         while self.token_atual[1] != "}":
             self.declaracao()
         self.consumir("DELIMITADOR")  # "}"
+        self.dentro_laco = False  # Desativa a flag ao sair do laço
 
     def comandos_simples(self):
         # Processa comandos simples como leia/escreva

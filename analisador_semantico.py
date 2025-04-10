@@ -7,6 +7,7 @@ class AnalisadorSemantico:
         self.tabela_simbolos = tabela_simbolos
         self.pos = 0
         self.token_atual = None
+        self.dentro_laco = False
         self.avancar()
 
     def avancar(self):
@@ -215,6 +216,8 @@ class AnalisadorSemantico:
             self.consumir("DELIMITADOR")
             return ("retorne", valor)
         elif self.token_atual[1] in ["continue", "pare"]:
+            if not self.dentro_laco:  # Verifica se está dentro de um laço
+                raise ValueError(f"Comando '{self.token_atual[1]}' fora de um laço na linha {self.token_atual[2]}.")
             comando = self.token_atual[1]
             self.consumir("RESERVADA")
             self.consumir("DELIMITADOR")
@@ -249,6 +252,7 @@ class AnalisadorSemantico:
         self.consumir("RESERVADA")  # "enquanto"
         self.consumir("DELIMITADOR")  # "("
         self.tabela_simbolos.entrar_escopo()
+        self.dentro_laco = True  # Ativa a flag ao entrar no laço
         condicao = self.expressao("boo")
         self.consumir("DELIMITADOR")  # ")"
         self.consumir("DELIMITADOR")  # "{"
@@ -256,6 +260,7 @@ class AnalisadorSemantico:
         while self.token_atual[1] != "}":
             corpo.append(self.declaracao())
         self.consumir("DELIMITADOR")  # "}"
+        self.dentro_laco = False  # Desativa a flag ao sair do laço
         self.tabela_simbolos.sair_escopo()
         return ("enquanto", condicao, corpo)
 
